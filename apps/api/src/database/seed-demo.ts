@@ -278,6 +278,16 @@ async function seed() {
     .set({ invoiceCount: invSpecs.length, memberCount: 2 } as any)
     .where(eq(schema.tenants.id, tenant.id));
 
+  // Advance the invoice-number sequence past the seeded invoices so the next
+  // invoice created in the app is INV-00<count+1> (not a duplicate of a seed row).
+  await db
+    .insert(schema.invoiceSequences)
+    .values({ tenantId: tenant.id, lastNumber: invSpecs.length } as any)
+    .onConflictDoUpdate({
+      target: schema.invoiceSequences.tenantId,
+      set: { lastNumber: invSpecs.length },
+    });
+
   // ── Payroll runs (Apr/May paid, Jun completed) ───────────────────────────────
   const runSpecs: Array<{ month: number; status: 'paid' | 'completed' }> = [
     { month: 4, status: 'paid' },
