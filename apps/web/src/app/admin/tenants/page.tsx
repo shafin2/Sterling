@@ -110,7 +110,7 @@ function TenantActions({ tenant }: { tenant: AdminTenant }) {
   );
 }
 
-export default function AdminTenantsPage() {
+function AdminTenantsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [search, setSearch] = React.useState(searchParams.get('search') ?? '');
@@ -249,5 +249,13 @@ export default function AdminTenantsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AdminTenantsPage() {
+  return (
+    <React.Suspense>
+      <AdminTenantsContent />
+    </React.Suspense>
   );
 }
