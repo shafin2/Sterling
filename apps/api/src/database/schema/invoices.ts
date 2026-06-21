@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, integer, boolean, timestamp, date, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, timestamp, date, pgEnum } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants';
 import { clients } from './clients';
 import { invoiceTemplates } from './invoice-templates';
@@ -29,6 +29,7 @@ export const invoices = pgTable('invoices', {
   viewedAt: timestamp('viewed_at'),
   sentAt: timestamp('sent_at'),
   paidAt: timestamp('paid_at'),
+  lastRemindedAt: timestamp('last_reminded_at'),                  // prevents duplicate reminder sends
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
