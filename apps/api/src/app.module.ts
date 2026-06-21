@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -28,6 +29,8 @@ import envConfig from './config/env.config';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+
     ConfigModule.forRoot({
       envFilePath: ['../../.env', '.env'],
       isGlobal: true,
@@ -68,6 +71,8 @@ import envConfig from './config/env.config';
     HealthModule,
   ],
   providers: [
+    // Global throttle guard — applies rate limits defined by ThrottlerModule
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     // Global auth guard — every route requires a valid JWT unless decorated @Public()
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Global permissions guard — runs after JwtAuthGuard sets request.user

@@ -64,7 +64,7 @@ interface KpiCardProps {
   countTo: number;
   isMoney?: boolean;
   sub?: React.ReactNode;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   trend?: number | null;
   href?: string;
   loading?: boolean;

@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import type { TemplateLayout, TemplateBlock, BlockType } from '@sterling/shared';
 import { BLOCK_LABELS } from '@sterling/shared';
 
-const BLOCK_ICONS: Record<BlockType, React.ElementType> = {
+const BLOCK_ICONS: Record<BlockType, React.ComponentType<{ className?: string }>> = {
   'header': LayoutTemplate,
   'logo': Image,
   'divider': Minus,

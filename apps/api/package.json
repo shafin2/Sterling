@@ -29,6 +29,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/swagger": "^11.0.0",
+    "@nestjs/throttler": "^6.5.0",
     "@sterling/shared": "workspace:*",
     "argon2": "^0.41.0",
     "bullmq": "^5.0.0",
