@@ -59,7 +59,7 @@ export function GuestSupportChat() {
         ]);
       });
 
-      const existing = (ch.state.messages as MessageResponse[]).map((m) => ({
+      const existing = (ch.state.messages as unknown as MessageResponse[]).map((m) => ({
         id: m.id,
         text: m.text ?? '',
         userId: m.user?.id ?? '',
