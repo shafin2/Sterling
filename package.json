@@ -10,7 +10,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
     "typecheck": "pnpm --recursive typecheck",
     "test": "pnpm --recursive test",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
