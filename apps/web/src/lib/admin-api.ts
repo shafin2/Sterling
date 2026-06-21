@@ -109,4 +109,15 @@ export const adminApi = {
     api.patch(`admin/tenants/${id}/plan`, { json: { plan } }).json<AdminTenant>(),
 
   getSuperAdmins: () => api.get('admin/admins').json<SuperAdmin[]>(),
+
+  getSupportChannels: () =>
+    api.get('stream/support-channels').json<
+      Array<{
+        id: string;
+        name: string;
+        lastMessage: string;
+        lastMessageAt: string | null;
+        memberCount: number;
+      }>
+    >(),
 };

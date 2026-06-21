@@ -31,6 +31,9 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   API_URL: z.string().url().default('http://localhost:4000'),
   APP_URL: z.string().url().default('http://localhost:3000'),
+  // Stream Chat
+  STREAM_API_KEY: z.string().optional(),
+  STREAM_API_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

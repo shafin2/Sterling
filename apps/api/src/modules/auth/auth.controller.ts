@@ -192,12 +192,20 @@ export class AuthController {
     @Req() req: Request & { user: typeof schema.users.$inferSelect },
     @Res() res: Response,
   ) {
-    const tokens = await this.authService.generateTokensForUser(req.user);
-    this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
-
-    const webUrl = this.configService.get<string>('WEB_URL') ?? 'http://localhost:3000';
-    const redirectTo = tokens.isSuperAdmin ? `${webUrl}/admin` : `${webUrl}/app`;
-    return res.redirect(redirectTo);
+    try {
+      if (!req.user) {
+        const webUrl = this.configService.get<string>('WEB_URL') ?? 'http://localhost:3000';
+        return res.redirect(`${webUrl}/auth/login?error=oauth_failed`);
+      }
+      const tokens = await this.authService.generateTokensForUser(req.user);
+      this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+      const webUrl = this.configService.get<string>('WEB_URL') ?? 'http://localhost:3000';
+      const redirectTo = tokens.isSuperAdmin ? `${webUrl}/admin` : `${webUrl}/app`;
+      return res.redirect(redirectTo);
+    } catch (err) {
+      const webUrl = this.configService.get<string>('WEB_URL') ?? 'http://localhost:3000';
+      return res.redirect(`${webUrl}/auth/login?error=oauth_error`);
+    }
   }
 
   private setTokenCookies(res: Response, accessToken: string, refreshToken: string) {

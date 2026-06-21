@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { GuestSupportChat } from '@/components/support/guest-support-chat';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { HeroCanvasLoader } from './_marketing/hero-canvas-loader';
 import { TestimonialsSection } from './_marketing/testimonials-section';
@@ -817,6 +818,7 @@ export default function LandingPage() {
       <PricingSection />
       <CtaBanner />
       <Footer />
+      <GuestSupportChat />
     </div>
   );
 }

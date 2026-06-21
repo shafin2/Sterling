@@ -21,6 +21,7 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { HealthModule } from './modules/health/health.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AiModule } from './modules/ai/ai.module';
+import { StreamModule } from './modules/stream/stream.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './modules/auth/guards/permissions.guard';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
@@ -70,6 +71,7 @@ import envConfig from './config/env.config';
     HealthModule,
     AdminModule,
     AiModule,
+    StreamModule,
   ],
   providers: [
     // Global auth guard — every route requires a valid JWT unless decorated @Public()
