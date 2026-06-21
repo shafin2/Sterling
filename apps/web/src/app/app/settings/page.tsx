@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { taxRulesApi, bpsToPercent, percentToBps, type TaxRule } from '@/lib/api/tax-rules';
-import { teamsApi, type TeamMember, type PendingInvite, type Role } from '@/lib/api/teams';
+import { teamsApi, type Role } from '@/lib/api/teams';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -460,10 +460,6 @@ function TaxRuleForm({
 }
 
 // ─── Team Tab ─────────────────────────────────────────────────────────────────
-
-// Suppress unused import warning — TeamMember and PendingInvite are used as types below
-type _TeamMember = TeamMember;
-type _PendingInvite = PendingInvite;
 
 const roleColors: Record<Role, string> = {
   owner: 'bg-primary/15 text-primary',
