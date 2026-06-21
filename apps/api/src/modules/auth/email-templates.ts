@@ -205,126 +205,50 @@ export function passwordResetEmailText(firstName: string, resetUrl: string): str
   return `Hi ${firstName},\n\nWe received a request to reset your Sterling password.\n\nReset your password (valid for 1 hour):\n${resetUrl}\n\nIf you didn't request this, ignore this email.`;
 }
 
-// ── Invoice payment reminder emails ──────────────────────────────────────────
+// ── Invite email ─────────────────────────────────────────────────────────────
 
-export type ReminderType = 'pre-due' | 'due-today' | 'overdue-notice';
-
-const REMINDER_META: Record<ReminderType, {
-  icon: string;
-  iconBg: string;
-  subject: string;
-  heading: string;
-  ctaColor: string;
-}> = {
-  'pre-due': {
-    icon: '⏰',
-    iconBg: BRAND.warning + '20',
-    subject: 'Payment Reminder: due in 3 days',
-    heading: 'Your payment is due soon',
-    ctaColor: BRAND.warning,
-  },
-  'due-today': {
-    icon: '📅',
-    iconBg: BRAND.accent + '20',
-    subject: 'Payment Due Today',
-    heading: 'Your invoice is due today',
-    ctaColor: BRAND.accent,
-  },
-  'overdue-notice': {
-    icon: '⚠️',
-    iconBg: BRAND.danger + '15',
-    subject: 'Overdue Invoice — Action Required',
-    heading: 'Your invoice is overdue',
-    ctaColor: BRAND.danger,
-  },
-};
-
-export function invoiceReminderHtml(
-  type: ReminderType,
-  clientName: string,
-  invoiceNumber: string,
-  amount: string,
-  dueDate: string,
-  invoiceUrl: string,
-  companyName: string,
+export function inviteEmailHtml(
+  inviterName: string,
+  tenantName: string,
+  role: string,
+  inviteUrl: string,
 ): string {
-  const meta = REMINDER_META[type];
-
-  let intro = '';
-  let note = '';
-  if (type === 'pre-due') {
-    intro = `This is a friendly reminder that invoice <strong>${invoiceNumber}</strong> from <strong>${companyName}</strong> is due in <strong>3 days</strong>.`;
-    note = 'Please arrange payment before the due date to avoid late fees.';
-  } else if (type === 'due-today') {
-    intro = `Invoice <strong>${invoiceNumber}</strong> from <strong>${companyName}</strong> is due <strong>today</strong>.`;
-    note = 'Please process your payment today to keep your account in good standing.';
-  } else {
-    intro = `Invoice <strong>${invoiceNumber}</strong> from <strong>${companyName}</strong> is now <strong>overdue</strong>.`;
-    note = 'Please arrange payment immediately or contact us to discuss a payment plan.';
-  }
-
   const body = `
     <div style="padding:36px 36px 32px;">
-      <div style="width:48px;height:48px;background:${meta.iconBg};border-radius:12px;text-align:center;line-height:48px;font-size:22px;margin-bottom:20px;">${meta.icon}</div>
+      <div style="width:48px;height:48px;background:${BRAND.primary}15;border-radius:12px;text-align:center;line-height:48px;font-size:22px;margin-bottom:20px;">🤝</div>
 
       <h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:${BRAND.text};letter-spacing:-0.03em;">
-        ${meta.heading}
+        You're invited to join ${tenantName}
       </h1>
-      <p style="margin:0 0 24px;font-size:15px;color:${BRAND.muted};line-height:1.6;">
-        Hi ${clientName},
+      <p style="margin:0 0 8px;font-size:15px;color:${BRAND.muted};line-height:1.6;">
+        <strong style="color:${BRAND.text};">${inviterName}</strong> has invited you to join <strong style="color:${BRAND.text};">${tenantName}</strong> on Sterling as a <strong style="color:${BRAND.text};">${role}</strong>.
+      </p>
+      <p style="margin:0 0 28px;font-size:15px;color:${BRAND.muted};line-height:1.6;">
+        Click the button below to accept your invitation. This link expires in <strong style="color:${BRAND.text};">7 days</strong>.
       </p>
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.surface};border-radius:10px;margin-bottom:28px;">
-        <tr>
-          <td style="padding:20px 24px;">
-            <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:${BRAND.text};">Invoice summary</p>
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="padding:4px 0;font-size:13px;color:${BRAND.muted};">Invoice number</td>
-                <td style="padding:4px 0;font-size:13px;font-weight:600;color:${BRAND.text};text-align:right;font-family:monospace;">${invoiceNumber}</td>
-              </tr>
-              <tr>
-                <td style="padding:4px 0;font-size:13px;color:${BRAND.muted};">Amount due</td>
-                <td style="padding:4px 0;font-size:15px;font-weight:800;color:${meta.ctaColor};text-align:right;font-family:monospace;">${amount}</td>
-              </tr>
-              <tr>
-                <td style="padding:4px 0;font-size:13px;color:${BRAND.muted};">Due date</td>
-                <td style="padding:4px 0;font-size:13px;font-weight:600;color:${BRAND.text};text-align:right;">${dueDate}</td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
+      ${button('Accept invitation', inviteUrl, BRAND.primary)}
 
-      <p style="margin:0 0 24px;font-size:15px;color:${BRAND.muted};line-height:1.6;">
-        ${intro}
+      <p style="margin:28px 0 0;font-size:13px;color:${BRAND.muted};line-height:1.6;">
+        Or copy and paste this URL into your browser:<br/>
+        <a href="${inviteUrl}" style="color:${BRAND.accent};word-break:break-all;">${inviteUrl}</a>
       </p>
-      <p style="margin:0 0 28px;font-size:14px;color:${BRAND.muted};line-height:1.6;">
-        ${note}
-      </p>
-
-      ${button('View Invoice', invoiceUrl, meta.ctaColor)}
     </div>
 
     <div style="padding:20px 36px;border-top:1px solid ${BRAND.border};background:#fafbff;">
       <p style="margin:0;font-size:12px;color:${BRAND.muted};line-height:1.6;">
-        This reminder was sent on behalf of <strong>${companyName}</strong> via Sterling.
-        If you have already paid, please disregard this message.
+        If you weren't expecting this invitation, you can safely ignore this email.
       </p>
     </div>`;
 
   return layout(body);
 }
 
-export function invoiceReminderText(
-  type: ReminderType,
-  clientName: string,
-  invoiceNumber: string,
-  amount: string,
-  dueDate: string,
-  invoiceUrl: string,
-  companyName: string,
+export function inviteEmailText(
+  inviterName: string,
+  tenantName: string,
+  role: string,
+  inviteUrl: string,
 ): string {
-  const meta = REMINDER_META[type];
-  return `Hi ${clientName},\n\n${meta.heading.toUpperCase()}\n\nInvoice: ${invoiceNumber}\nAmount: ${amount}\nDue date: ${dueDate}\n\nView your invoice: ${invoiceUrl}\n\nThis reminder was sent on behalf of ${companyName} via Sterling.\nIf you have already paid, please disregard this message.`;
+  return `${inviterName} has invited you to join ${tenantName} on Sterling as a ${role}.\n\nAccept your invitation (valid for 7 days):\n${inviteUrl}\n\nIf you weren't expecting this invitation, you can safely ignore this email.`;
 }
