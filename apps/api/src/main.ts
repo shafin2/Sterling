@@ -23,7 +23,7 @@ async function bootstrap() {
   // Bull-Board — protect the job queue dashboard with an API key.
   // Set BULL_BOARD_API_KEY in .env; if unset in production, the dashboard is disabled.
   const bullBoardKey = process.env['BULL_BOARD_API_KEY'];
-  app.use('/queues', (req: Request, res: Response, next: NextFunction) => {
+  app.use('/api/v1/queues', (req: Request, res: Response, next: NextFunction) => {
     if (!bullBoardKey) {
       // No key configured — block in production, allow in development
       if (process.env['NODE_ENV'] === 'production') {

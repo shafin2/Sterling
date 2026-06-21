@@ -7,6 +7,7 @@ COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 
 RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @sterling/shared build
 RUN pnpm --filter @sterling/api build
 
 FROM node:22-alpine AS runner

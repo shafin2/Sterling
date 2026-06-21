@@ -1,34 +1,31 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as Minio from 'minio';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
-  private client!: Minio.Client;
+  private client!: S3Client;
   private bucket!: string;
 
   constructor(private readonly config: ConfigService) {}
 
-  async onModuleInit() {
-    this.bucket = this.config.get<string>('MINIO_BUCKET') ?? 'sterling';
-    this.client = new Minio.Client({
-      endPoint: this.config.get<string>('MINIO_ENDPOINT') ?? 'localhost',
-      port: this.config.get<number>('MINIO_PORT') ?? 9000,
-      useSSL: this.config.get<boolean>('MINIO_USE_SSL') ?? false,
-      accessKey: this.config.get<string>('MINIO_ACCESS_KEY') ?? 'minioadmin',
-      secretKey: this.config.get<string>('MINIO_SECRET_KEY') ?? 'minioadmin',
+  onModuleInit() {
+    this.bucket = this.config.get<string>('S3_BUCKET') ?? 'sterling';
+    this.client = new S3Client({
+      region: this.config.get<string>('AWS_REGION') ?? 'us-east-1',
+      credentials: {
+        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID') ?? '',
+        secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY') ?? '',
+      },
     });
-
-    try {
-      const exists = await this.client.bucketExists(this.bucket);
-      if (!exists) {
-        await this.client.makeBucket(this.bucket);
-        this.logger.log(`Created MinIO bucket: ${this.bucket}`);
-      }
-    } catch (err) {
-      this.logger.warn(`MinIO unavailable — file storage disabled: ${(err as Error).message}`);
-    }
+    this.logger.log(`S3 storage initialized — bucket: ${this.bucket}`);
   }
 
   async uploadBuffer(
@@ -36,17 +33,28 @@ export class StorageService implements OnModuleInit {
     buffer: Buffer,
     contentType = 'application/octet-stream',
   ): Promise<string> {
-    await this.client.putObject(this.bucket, objectPath, buffer, buffer.length, {
-      'Content-Type': contentType,
-    });
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: objectPath,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
     return objectPath;
   }
 
   async getPresignedUrl(objectPath: string, expirySeconds = 3600): Promise<string> {
-    return this.client.presignedGetObject(this.bucket, objectPath, expirySeconds);
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({ Bucket: this.bucket, Key: objectPath }),
+      { expiresIn: expirySeconds },
+    );
   }
 
   async deleteObject(objectPath: string): Promise<void> {
-    await this.client.removeObject(this.bucket, objectPath);
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: objectPath }),
+    );
   }
 }

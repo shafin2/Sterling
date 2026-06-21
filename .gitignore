@@ -34,3 +34,6 @@ coverage/
 
 # Misc
 .turbo/
+
+# Test/CI artifacts
+.playwright-mcp/

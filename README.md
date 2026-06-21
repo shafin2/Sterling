@@ -67,45 +67,89 @@ packages/
 - **PDFs** (invoices + salary slips) render server-side with **headless Chrome (Puppeteer)** from
   the *same* HTML templates the designer edits — true WYSIWYG.
 - **Queues/cron** (payroll runs, payment reminders, email, PDF) via **BullMQ + Redis**.
+- **File storage** (generated PDFs, tenant logos) via **AWS S3** — see [Storage](#-file-storage--aws-s3) below.
 - API at `:4000` under `/api/v1` (Swagger at `/api/docs`); web at `:3000`.
+
+---
+
+## 📁 File Storage — AWS S3
+
+Generated PDFs (invoices, payslips) and tenant logos are stored in **AWS S3** (`ap-south-1`).
+
+**Production (EC2):** An IAM role (`sterling-app-s3-role`) is attached directly to the EC2 instance
+with `AmazonS3FullAccess`. No access keys are stored anywhere — the AWS SDK picks up credentials
+automatically from the EC2 instance metadata service (IMDS). Just set:
+
+```env
+AWS_REGION=ap-south-1
+S3_BUCKET=sterling-app-512738511897
+# Leave AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY blank
+```
+
+**Local dev:** IAM role credentials are only available inside EC2. To test S3 locally, create an
+IAM user with S3 access and temporarily fill in your credentials:
+
+```env
+AWS_REGION=ap-south-1
+AWS_ACCESS_KEY_ID=your-iam-user-key
+AWS_SECRET_ACCESS_KEY=your-iam-user-secret
+S3_BUCKET=sterling-app-512738511897
+```
+
+**Test S3 connectivity** (run on EC2, or locally with IAM user credentials in `.env`):
+
+```bash
+node apps/api/scripts/test-s3.mjs
+```
+
+The script does a full round-trip: upload → read → delete a small test object and reports pass/fail.
 
 ---
 
 ## 🚀 Run it locally (no Docker)
 
-**Prereqs:** Node ≥ 22, pnpm ≥ 10, and local **PostgreSQL 16**, **Redis**, **Mailhog**, **MinIO**.
+**Prereqs:** Node ≥ 22, pnpm ≥ 10, local **PostgreSQL 16** and **Redis**.
+
+> S3 (PDF storage) won't work locally without IAM user credentials — everything else runs fine.
+> Email sending requires Mailhog or an SMTP server; leave blank to skip.
 
 ```bash
 # 1. install
 pnpm install
 
 # 2. configure
-cp .env.example .env        # fill in DB / Redis / SMTP / S3 values
+cp .env.example .env        # fill in DATABASE_URL, Redis, JWT secrets, S3 (optional locally)
 
-# 3. database
-pnpm --filter api db:migrate
-pnpm --filter api db:seed   # demo tenant, roles, sample data
+# 3. build the shared package first
+pnpm --filter @sterling/shared build
 
-# 4. run everything (api + worker + web)
-pnpm dev
+# 4. database
+node apps/api/scripts/migrate.mjs
+
+# 5. run api + worker + web
+pnpm --filter @sterling/api dev        # terminal 1 — NestJS API on :4000
+pnpm --filter @sterling/api worker:dev # terminal 2 — BullMQ worker
+pnpm --filter @sterling/web dev        # terminal 3 — Next.js on :3000
 ```
 
-- Web → http://localhost:3000  ·  API docs → http://localhost:4000/api/docs
-- Mailhog UI → http://localhost:8025  ·  MinIO console → http://localhost:9001
-
-> Local runs use host services (no Docker). **Deployment** uses Docker Compose.
+- Web → http://localhost:3000
+- API docs (Swagger) → http://localhost:4000/api/docs
+- Queue dashboard (Bull Board) → http://localhost:4000/api/v1/queues
 
 ---
 
-## 📦 Deploy (Docker)
+## 📦 Deploy (EC2 / Docker)
 
 ```bash
 cp .env.production.example .env.production
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Brings up **postgres, redis, api, worker, web** behind an nginx reverse proxy. Migrations + seed
-run on release; health checks and volume-backed Postgres/Redis included.
+Brings up **postgres, redis, api, worker, web** behind an nginx reverse proxy. Migrations run on
+release; health checks and volume-backed Postgres/Redis included.
+
+**S3 on EC2:** Attach the `sterling-app-s3-role` IAM role to your EC2 instance — no keys needed
+in `.env`. The SDK discovers credentials automatically via IMDS.
 
 ---
 
@@ -122,12 +166,14 @@ tenant isolation).
 
 | Command | Does |
 |---|---|
-| `pnpm dev` | Run api + worker + web in watch mode |
+| `pnpm --filter @sterling/api dev` | Run NestJS API in watch mode (:4000) |
+| `pnpm --filter @sterling/api worker:dev` | Run BullMQ worker in watch mode |
+| `pnpm --filter @sterling/web dev` | Run Next.js frontend in watch mode (:3000) |
 | `pnpm build` | Build all workspaces |
 | `pnpm lint` | Lint/type-check all workspaces |
 | `pnpm test` | Run Vitest across workspaces |
-| `pnpm --filter api db:migrate` | Apply Drizzle migrations |
-| `pnpm --filter api db:seed` | Seed demo data |
+| `node apps/api/scripts/migrate.mjs` | Apply all SQL migrations |
+| `node apps/api/scripts/test-s3.mjs` | Test S3 connectivity (upload → read → delete) |
 
 ---
 
