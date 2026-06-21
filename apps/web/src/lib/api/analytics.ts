@@ -59,6 +59,13 @@ export interface UpcomingDue {
   daysUntilDue: number;
 }
 
+export interface AiInsight {
+  summary: string;
+  highlights: string[];
+  recommendation: string;
+  generatedAt: string;
+}
+
 // ─── API client ───────────────────────────────────────────────────────────────
 
 export const analyticsApi = {
@@ -82,6 +89,9 @@ export const analyticsApi = {
 
   upcomingDues: () =>
     api.get('analytics/upcoming-dues').json<UpcomingDue[]>(),
+
+  aiInsights: (year?: number) =>
+    api.get('analytics/ai-insights', { searchParams: year ? { year } : {} }).json<AiInsight>(),
 };
 
 // ─── CSV export helpers ───────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ import {
 import {
   DollarSign, Clock, AlertTriangle, Briefcase,
   Users, UserCheck, TrendingUp, TrendingDown, ArrowRight, RefreshCw,
-  ChevronLeft, ChevronRight, CalendarDays,
+  ChevronLeft, ChevronRight, CalendarDays, Sparkles, CheckCircle, Lightbulb,
 } from 'lucide-react';
 import { analyticsApi } from '@/lib/api/analytics';
 import { MoneyText } from '@/components/ui/money-text';
@@ -225,6 +225,13 @@ export default function DashboardPage() {
     staleTime: 60_000,
   });
 
+  const { data: aiInsights, isLoading: aiLoading } = useQuery({
+    queryKey: ['analytics', 'ai-insights', year],
+    queryFn: () => analyticsApi.aiInsights(year),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
   const handleRefresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['analytics'] });
   };
@@ -312,6 +319,59 @@ export default function DashboardPage() {
           loading={statsLoading}
         />
       </div>
+
+      {/* AI Payroll Insights */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="rounded-xl border border-accent/20 bg-gradient-to-r from-primary/5 via-accent/5 to-transparent p-5"
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-accent-300 shadow-md">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-sm font-semibold text-foreground">AI Payroll Insights</h3>
+              <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent uppercase tracking-wide">Powered by Groq</span>
+              {aiInsights?.generatedAt && !aiLoading && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {new Date(aiInsights.generatedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+            {aiLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ) : aiInsights ? (
+              <div className="space-y-3">
+                <p className="text-sm text-foreground/80 leading-relaxed">{aiInsights.summary}</p>
+                {aiInsights.highlights.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {aiInsights.highlights.map((h, i) => (
+                      <span key={i} className="flex items-center gap-1.5 rounded-lg bg-background/70 border border-border/50 px-3 py-1.5 text-xs text-foreground">
+                        <CheckCircle className="h-3 w-3 text-success shrink-0" />
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {aiInsights.recommendation && (
+                  <div className="flex items-start gap-2 rounded-lg bg-warning/10 border border-warning/20 px-3 py-2">
+                    <Lightbulb className="h-3.5 w-3.5 text-warning mt-0.5 shrink-0" />
+                    <p className="text-xs text-foreground/80">{aiInsights.recommendation}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No payroll data available for AI insights yet.</p>
+            )}
+          </div>
+        </div>
+      </motion.div>
 
       {/* Charts row 1 — Revenue + Status donut */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

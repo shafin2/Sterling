@@ -23,6 +23,9 @@ const EnvSchema = z.object({
   SMTP_FROM: z.string().default('noreply@sterling.app'),
   // Queue dashboard — set to a long random string in production; leave blank in dev
   BULL_BOARD_API_KEY: z.string().optional(),
+  // AI
+  ANTHROPIC_API_KEY: z.string().optional(),
+  GROQ_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
