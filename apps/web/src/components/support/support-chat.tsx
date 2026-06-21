@@ -23,9 +23,13 @@ export function SupportChat() {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Use refs to guard connect() so the callback never changes reference
+  const connectingRef = useRef(false);
+  const connectedRef = useRef(false);
 
   const connect = useCallback(async () => {
-    if (connected || connecting) return;
+    if (connectedRef.current || connectingRef.current) return;
+    connectingRef.current = true;
     setConnecting(true);
     setError(null);
     try {
@@ -72,20 +76,22 @@ export function SupportChat() {
       });
 
       setChannel(ch);
+      connectedRef.current = true;
       setConnected(true);
     } catch (e) {
       console.error('Stream connect failed', e);
       setError('Connection failed. Please try again.');
     } finally {
+      connectingRef.current = false;
       setConnecting(false);
     }
-  }, [connected, connecting]);
+  }, []); // stable ref — guards via refs, not state
 
   useEffect(() => {
-    if (open && !connected) {
+    if (open && !connectedRef.current) {
       void connect();
     }
-  }, [open, connected, connect]);
+  }, [open, connect]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

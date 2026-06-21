@@ -16,6 +16,19 @@ import type { Env } from '../../config/env.config';
 
 type Plan = 'free' | 'pro' | 'enterprise';
 
+export interface PaymentRecord {
+  id: string;
+  number: string;
+  date: string;
+  amount: number;
+  currency: string;
+  status: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  pdfUrl: string | null;
+  hostedUrl: string | null;
+}
+
 export interface SubscriptionStatus {
   plan: Plan;
   status: string | null;
@@ -137,6 +150,37 @@ export class StripeService {
     });
 
     return { url: session.url };
+  }
+
+  // ─── Payment History ────────────────────────────────────────────────────────
+
+  async getPaymentHistory(tenantId: string): Promise<PaymentRecord[]> {
+    const tenant = await this.db.query.tenants.findFirst({
+      where: eq(schema.tenants.id, tenantId),
+    });
+    if (!tenant?.stripeCustomerId) return [];
+
+    try {
+      const invoices = await this.stripe.invoices.list({
+        customer: tenant.stripeCustomerId,
+        limit: 24,
+      });
+      return invoices.data.map((inv) => ({
+        id: inv.id,
+        number: inv.number ?? inv.id,
+        date: new Date(inv.created * 1000).toISOString(),
+        amount: inv.amount_paid,
+        currency: inv.currency.toUpperCase(),
+        status: inv.status ?? 'unknown',
+        periodStart: inv.period_start ? new Date(inv.period_start * 1000).toISOString() : null,
+        periodEnd: inv.period_end ? new Date(inv.period_end * 1000).toISOString() : null,
+        pdfUrl: inv.invoice_pdf ?? null,
+        hostedUrl: inv.hosted_invoice_url ?? null,
+      }));
+    } catch (err) {
+      this.logger.warn(`getPaymentHistory failed for tenant ${tenantId}: ${String(err)}`);
+      return [];
+    }
   }
 
   // ─── Get Subscription Status ────────────────────────────────────────────────

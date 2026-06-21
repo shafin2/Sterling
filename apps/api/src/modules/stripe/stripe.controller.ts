@@ -65,6 +65,12 @@ export class StripeController {
     return this.stripeService.getSubscriptionStatus(req.user.tenantId);
   }
 
+  @Get('invoices')
+  @ApiOperation({ summary: 'Get payment history (Stripe invoices) for the tenant' })
+  async getPaymentHistory(@Req() req: AuthenticatedRequest) {
+    return this.stripeService.getPaymentHistory(req.user.tenantId);
+  }
+
   @Public()
   @Post('webhook')
   @HttpCode(HttpStatus.OK)

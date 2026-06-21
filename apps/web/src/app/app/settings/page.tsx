@@ -11,6 +11,7 @@ import {
   Building2, Percent, Plus, Trash2, Edit2, Check, X,
   Globe, Phone, MapPin, Receipt, Upload, Image as ImageIcon,
   Users, Mail, CreditCard, Zap, Crown, CheckCircle2,
+  Download, ExternalLink,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { taxRulesApi, bpsToPercent, percentToBps, type TaxRule } from '@/lib/api/tax-rules';
@@ -897,11 +898,17 @@ function BillingTab() {
     retry: false,
   });
 
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
+    queryKey: ['stripe', 'invoices'],
+    queryFn: () => stripeApi.getInvoices(),
+    retry: false,
+  });
+
   async function handleUpgrade(plan: 'pro' | 'enterprise') {
     setLoading(plan);
     try {
       const { url } = await stripeApi.createCheckoutSession(plan);
-      window.location.href = url;
+      window.open(url, '_blank', 'noopener,noreferrer');
     } catch {
       toast.error('Failed to start checkout');
     } finally {
@@ -913,7 +920,7 @@ function BillingTab() {
     setLoading('portal');
     try {
       const { url } = await stripeApi.createPortalSession();
-      window.location.href = url;
+      window.open(url, '_blank', 'noopener,noreferrer');
     } catch {
       toast.error('Failed to open billing portal');
     } finally {
@@ -1090,6 +1097,105 @@ function BillingTab() {
             </div>
           );
         })}
+      </div>
+
+      {/* Payment History */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Payment History</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">All charges and invoices for this workspace</p>
+          </div>
+        </div>
+
+        {invoicesLoading ? (
+          <div className="space-y-3 p-5">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : invoices.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-12 text-center px-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/40">
+              <CreditCard className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No payments yet</p>
+            <p className="text-xs text-muted-foreground">Your invoices will appear here once you upgrade.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {invoices.map((inv) => {
+              const date = new Date(inv.date);
+              const isPaid = inv.status === 'paid';
+              const amountFormatted = (inv.amount / 100).toLocaleString('en-US', {
+                style: 'currency',
+                currency: inv.currency,
+                minimumFractionDigits: 2,
+              });
+              const period = inv.periodStart && inv.periodEnd
+                ? `${new Date(inv.periodStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(inv.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                : null;
+
+              return (
+                <div key={inv.id} className="flex items-center gap-4 px-5 py-4 hover:bg-surface/50 transition-colors">
+                  {/* Status dot */}
+                  <div className={[
+                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                    isPaid ? 'bg-success/10' : 'bg-warning/10',
+                  ].join(' ')}>
+                    <CreditCard className={['h-4 w-4', isPaid ? 'text-success' : 'text-warning'].join(' ')} />
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-foreground">{inv.number}</span>
+                      <span className={[
+                        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize',
+                        isPaid ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning',
+                      ].join(' ')}>
+                        {inv.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                      <span>{date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                      {period && <><span>·</span><span>{period}</span></>}
+                    </div>
+                  </div>
+
+                  {/* Amount */}
+                  <span className="tabular-nums text-sm font-semibold text-foreground shrink-0">{amountFormatted}</span>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {inv.pdfUrl && (
+                      <a
+                        href={inv.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-surface hover:text-foreground transition-colors"
+                        title="Download PDF"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                    {inv.hostedUrl && (
+                      <a
+                        href={inv.hostedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-surface hover:text-foreground transition-colors"
+                        title="View invoice"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

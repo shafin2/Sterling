@@ -22,9 +22,12 @@ export function GuestSupportChat() {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const connectingRef = useRef(false);
+  const connectedRef = useRef(false);
 
   const connect = useCallback(async () => {
-    if (connected || connecting) return;
+    if (connectedRef.current || connectingRef.current) return;
+    connectingRef.current = true;
     setConnecting(true);
     try {
       const res = await fetch('/api/v1/stream/guest-token', { credentials: 'include' });
@@ -69,19 +72,21 @@ export function GuestSupportChat() {
       setMessages(existing);
 
       setChannel(ch);
+      connectedRef.current = true;
       setConnected(true);
     } catch (e) {
       console.error('Guest stream connect failed', e);
     } finally {
+      connectingRef.current = false;
       setConnecting(false);
     }
-  }, [connected, connecting]);
+  }, []); // stable — guards via refs
 
   useEffect(() => {
-    if (open && !connected) {
+    if (open && !connectedRef.current) {
       void connect();
     }
-  }, [open, connected, connect]);
+  }, [open, connect]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
