@@ -43,7 +43,7 @@ function AiInvoiceDialog({ onClose }: { onClose: () => void }) {
 
   const { data: clients = [] } = useQuery({
     queryKey: ['clients', 'all'],
-    queryFn: () => clientsApi.list({ page: 1, limit: 200 }).then((r) => r.data),
+    queryFn: () => clientsApi.list({ page: 1, limit: 100 }).then((r) => r.data),
   });
 
   const handleGenerate = async () => {
