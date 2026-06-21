@@ -57,6 +57,11 @@ services:
       SMTP_FROM: ${SMTP_FROM:-noreply@sterling.app}
       BULL_BOARD_API_KEY: ${BULL_BOARD_API_KEY:-}
       PUPPETEER_EXECUTABLE_PATH: ${PUPPETEER_EXECUTABLE_PATH:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      STREAM_API_KEY: ${STREAM_API_KEY:-}
+      STREAM_API_SECRET: ${STREAM_API_SECRET:-}
     ports:
       - '127.0.0.1:4000:4000'
     healthcheck:
@@ -92,6 +97,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@sterling.app}
       PUPPETEER_EXECUTABLE_PATH: ${PUPPETEER_EXECUTABLE_PATH:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
 
   web:
     build:
