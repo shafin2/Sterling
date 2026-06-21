@@ -12,7 +12,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   const toggleSidebar = React.useCallback(() => setSidebarOpen((o) => !o), []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background transition-[grid-template-columns]">
       {/* Mobile overlay — clicks outside close the sidebar */}
       {sidebarOpen && (
         <div
