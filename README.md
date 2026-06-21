@@ -146,17 +146,34 @@ graph TD
     WK -.-> SMTP[SMTP / Nodemailer]
 ```
 
+<details>
+<summary>Plain-text version of the diagram</summary>
+
+```text
+                                            ┌───────────────────────────────────┐
+                                       ┌───▶│  PostgreSQL 16  (RLS, per-tenant)  │
+                                       │    └───────────────────────────────────┘
+                                       │    ┌───────────────────────────────────┐
+   ┌─────────┐   HTTPS    ┌─────────┐  ├───▶│  Redis + BullMQ  (queue / cache)  │
+   │ Browser │ ─────────▶ │  nginx  │  │    └─────────────────┬─────────────────┘
+   └─────────┘            └────┬────┘  │                      │ jobs
+                               │       │                      ▼
+                 ┌─────────────┴──┐    │            ┌──────────────────────┐
+                 ▼                ▼    │            │  ⚙️  Worker           │
+        ┌──────────────┐  ┌────────────┴──┐         │  PDF · Email         │
+        │ Next.js  web │  │  NestJS   api │         │  Payroll · Reminders │
+        │   (:3000)    │  │   (:4000)     │         └──────────────────────┘
+        └──────────────┘  │  stateless    │         ┌───────────────────────────────────┐
+                          │  JWT cookie   │ ───────▶│  AWS S3   (PDFs, logos)           │
+                          └───────┬───────┘         └───────────────────────────────────┘
+                                  │
+                                  ▼
+        External APIs:  Stripe  ·  Groq + Anthropic Claude  ·  Stream Chat  ·  SMTP
 ```
-                          ┌──────────────────────────────┐
-   Browser ──HTTPS──▶ nginx ──┬──▶ Next.js (web :3000)    │
-                          │   └──▶ NestJS  (api :4000) ───┼──▶ PostgreSQL 16  (RLS, tenant-isolated)
-                          │        stateless · JWT cookie ├──▶ Redis + BullMQ (queue/cache)
-                          │                               └──▶ AWS S3         (PDFs, logos)
-                          │
-   Worker ◀─── pulls jobs ◀── Redis ─────────────────────────▶ PDF · Email · Payroll · Reminders
-                          │
-   External: Stripe · Groq + Anthropic Claude · Stream Chat · SMTP
-```
+
+</details>
+
+Every node is **stateless or shared**: spin up more `api` or `worker` containers behind nginx and they all read the same Postgres / Redis / S3 — horizontal scaling with no code changes.
 
 ### Why it scales
 
@@ -226,13 +243,15 @@ pnpm --filter @sterling/api worker:dev        # BullMQ worker (PDF/email/payroll
 pnpm --filter @sterling/web dev               # Next.js → :3000
 ```
 
-| Service | URL |
-|---|---|
-| Web app | http://localhost:3000 |
-| API (Swagger docs) | http://localhost:4000/api/docs |
-| Queue dashboard (Bull Board) | http://localhost:4000/api/v1/queues |
+| Service | Live | Local |
+|---|---|---|
+| Web app | **https://sterling.shafinzaman.dev** | http://localhost:3000 |
+| API — Swagger docs | **https://sterling.shafinzaman.dev/api/docs** | http://localhost:4000/api/docs |
+| Queue dashboard (Bull Board) | **https://sterling.shafinzaman.dev/api/v1/queues** | http://localhost:4000/api/v1/queues |
 
-> 💡 Run the **worker** in its own terminal so PDFs, emails and payroll jobs actually process.
+> 🔓 On the live site both the **Swagger API explorer** and the **Bull Board queue dashboard** are open — no login or key required — so you can inspect the API and watch PDF/email/payroll jobs run in real time during the demo.
+
+> 💡 Locally, run the **worker** in its own terminal so PDFs, emails and payroll jobs actually process.
 > See [`DEMO.md`](./DEMO.md) for a full guided walkthrough and demo credentials.
 
 ---

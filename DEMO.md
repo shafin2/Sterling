@@ -21,6 +21,7 @@
 | **Local — Mailhog** | http://localhost:8025 (inbox) | — |
 | **Local — Queues** | http://localhost:4000/api/v1/queues | — |
 | **Live (Production)** | https://sterling.shafinzaman.dev | https://sterling.shafinzaman.dev/api/docs |
+| **Live — Queues** | https://sterling.shafinzaman.dev/api/v1/queues | open, no login |
 
 > 💡 **Recommendation:** demo on **local** so you can show the Mailhog inbox and queue dashboard live. Keep the **production** URL open in a tab to prove it's deployed and real.
 
