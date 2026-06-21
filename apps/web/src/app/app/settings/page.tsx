@@ -922,32 +922,78 @@ function BillingTab() {
   }
 
   const currentPlan = status?.plan ?? 'free';
+  const periodEnd = status?.currentPeriodEnd ? new Date(status.currentPeriodEnd) : null;
+  const daysLeft = periodEnd
+    ? Math.max(0, Math.ceil((periodEnd.getTime() - Date.now()) / 86_400_000))
+    : null;
 
   return (
     <div className="space-y-6">
       {/* Current plan banner */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Current plan</p>
+      <div className={[
+        'rounded-xl border p-5 transition-all',
+        currentPlan !== 'free'
+          ? 'border-primary/40 bg-gradient-to-r from-primary/5 to-accent/5'
+          : 'border-border bg-card',
+      ].join(' ')}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Current plan</p>
             {isLoading ? (
-              <Skeleton className="mt-1 h-7 w-24" />
-            ) : (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xl font-bold text-foreground capitalize">{currentPlan}</span>
-                {currentPlan !== 'free' && status?.currentPeriodEnd && (
-                  <span className="text-xs text-muted-foreground">
-                    · renews {new Date(status.currentPeriodEnd).toLocaleDateString()}
-                  </span>
-                )}
-                {status?.cancelAtPeriodEnd && (
-                  <span className="text-xs text-warning font-medium">· cancels at period end</span>
-                )}
+              <div className="space-y-2">
+                <Skeleton className="h-7 w-28" />
+                <Skeleton className="h-4 w-48" />
               </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl font-extrabold text-foreground capitalize tracking-tight">
+                    {currentPlan}
+                  </span>
+                  {status?.status && (
+                    <span className={[
+                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                      status.status === 'active'
+                        ? 'bg-success/15 text-success'
+                        : status.status === 'trialing'
+                          ? 'bg-accent/15 text-accent'
+                          : 'bg-warning/15 text-warning',
+                    ].join(' ')}>
+                      {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
+                    </span>
+                  )}
+                  {status?.cancelAtPeriodEnd && (
+                    <span className="inline-flex items-center rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning">
+                      Cancels at period end
+                    </span>
+                  )}
+                </div>
+                {currentPlan !== 'free' && periodEnd && (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    <span>
+                      {status?.cancelAtPeriodEnd ? 'Ends' : 'Renews'} on{' '}
+                      <span className="font-medium text-foreground">
+                        {periodEnd.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </span>
+                    </span>
+                    {daysLeft !== null && (
+                      <span className={[
+                        'font-medium',
+                        daysLeft <= 7 ? 'text-warning' : 'text-foreground',
+                      ].join(' ')}>
+                        · {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining
+                      </span>
+                    )}
+                  </div>
+                )}
+                {currentPlan === 'free' && (
+                  <p className="text-sm text-muted-foreground">Upgrade to unlock advanced features.</p>
+                )}
+              </>
             )}
           </div>
           {currentPlan !== 'free' && (
-            <Button variant="outline" size="sm" onClick={handlePortal} disabled={loading === 'portal'}>
+            <Button variant="outline" size="sm" onClick={handlePortal} disabled={loading === 'portal'} className="shrink-0">
               {loading === 'portal' ? 'Opening…' : 'Manage subscription'}
             </Button>
           )}

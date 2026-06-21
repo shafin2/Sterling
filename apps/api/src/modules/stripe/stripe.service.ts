@@ -147,6 +147,42 @@ export class StripeService {
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
 
+    // Self-heal: customer exists but webhook missed → look up active subscription from Stripe
+    if (!tenant.stripeSubscriptionId && tenant.stripeCustomerId) {
+      try {
+        const subs = await this.stripe.subscriptions.list({
+          customer: tenant.stripeCustomerId,
+          status: 'active',
+          limit: 1,
+        });
+        const sub = subs.data[0];
+        if (sub) {
+          const priceId = sub.items.data[0]?.price.id ?? '';
+          const plan = this.planFromPriceId(priceId);
+          // Write back so future calls are fast
+          await this.db
+            .update(schema.tenants)
+            .set({ plan, stripeSubscriptionId: sub.id, updatedAt: new Date() })
+            .where(eq(schema.tenants.id, tenantId));
+          this.logger.log(`Self-healed tenant ${tenantId} → plan: ${plan}, sub: ${sub.id}`);
+          return {
+            plan,
+            status: sub.status,
+            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            cancelAtPeriodEnd: sub.cancel_at_period_end,
+          };
+        }
+      } catch (err) {
+        this.logger.warn(`Self-heal lookup failed for tenant ${tenantId}: ${String(err)}`);
+      }
+      return {
+        plan: (tenant.plan as Plan) ?? 'free',
+        status: null,
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+      };
+    }
+
     if (!tenant.stripeSubscriptionId) {
       return {
         plan: (tenant.plan as Plan) ?? 'free',
