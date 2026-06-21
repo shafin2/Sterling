@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
+import Groq from 'groq-sdk';
 
 export interface AiGeneratedInvoice {
   clientHint: string;
@@ -35,34 +35,39 @@ Do not include currency symbols. Do not include markdown. Return raw JSON only.`
 
 @Injectable()
 export class AiInvoiceService {
-  private readonly client: Anthropic | null = null;
+  private readonly groq: Groq | null = null;
 
   constructor(private readonly config: ConfigService) {
-    const apiKey = config.get<string>('ANTHROPIC_API_KEY');
+    const apiKey = config.get<string>('GROQ_API_KEY');
     if (apiKey) {
-      this.client = new Anthropic({ apiKey });
+      this.groq = new Groq({ apiKey });
     }
   }
 
   async generateFromPrompt(prompt: string): Promise<AiGeneratedInvoice> {
-    if (!this.client) {
-      throw new BadRequestException('AI invoice generation is not configured (missing ANTHROPIC_API_KEY)');
+    if (!this.groq) {
+      throw new BadRequestException('AI invoice generation is not configured (missing GROQ_API_KEY)');
     }
     if (!prompt?.trim()) {
       throw new BadRequestException('Prompt is required');
     }
 
-    const message = await this.client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt.trim() }],
-    });
-
-    const text = message.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b as { type: 'text'; text: string }).text)
-      .join('');
+    let text = '';
+    try {
+      const completion = await this.groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt.trim() },
+        ],
+        max_tokens: 1024,
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+      });
+      text = completion.choices[0]?.message?.content?.trim() ?? '';
+    } catch {
+      throw new BadRequestException('AI service is temporarily unavailable. Please try again.');
+    }
 
     try {
       const parsed = JSON.parse(text) as AiGeneratedInvoice;
