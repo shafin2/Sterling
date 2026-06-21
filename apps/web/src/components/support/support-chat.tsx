@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Channel, Event, MessageResponse } from 'stream-chat';
 import { cn } from '@/lib/utils';
 
@@ -89,84 +90,151 @@ export function SupportChat() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      {open && (
-        <div className="mb-3 flex w-80 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
-          <div className="flex items-center justify-between bg-primary px-4 py-3">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-white" />
-              <span className="text-sm font-semibold text-white">Support Chat</span>
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="flex w-[360px] flex-col overflow-hidden rounded-2xl border border-border/50 bg-background shadow-2xl backdrop-blur-sm"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between bg-gradient-to-r from-primary to-accent px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
+                  <MessageSquare className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white leading-tight">Support</p>
+                  <p className="text-[11px] text-white/70 leading-tight">We're here to help</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-green-400" />
+                  </span>
+                  <span className="text-[11px] text-white/80">Online</span>
+                </div>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                  aria-label="Close chat"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="text-white/70 hover:text-white transition-colors"
-              aria-label="Close chat"
+
+            {/* Messages */}
+            <div className="flex h-72 flex-col gap-2 overflow-y-auto p-4">
+              {connecting && (
+                <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Connecting…
+                </div>
+              )}
+              {!connecting && messages.length === 0 && (
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">Hi! How can we help?</p>
+                  <p className="text-xs text-muted-foreground">Send a message to get started.</p>
+                </div>
+              )}
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={cn(
+                    'flex flex-col gap-0.5',
+                    m.userId === myUserId ? 'items-end' : 'items-start',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
+                      m.userId === myUserId
+                        ? 'rounded-br-sm bg-gradient-to-br from-primary to-accent text-white'
+                        : 'rounded-bl-sm bg-muted text-foreground',
+                    )}
+                  >
+                    {m.text}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground px-1">
+                    {m.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              ))}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Input */}
+            <div className="flex gap-2 border-t border-border/60 p-3">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void sendMessage();
+                  }
+                }}
+                placeholder="Type a message…"
+                className="flex-1 rounded-xl border border-border bg-background px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 disabled:opacity-50"
+                disabled={!connected}
+              />
+              <button
+                onClick={() => void sendMessage()}
+                disabled={!connected || !input.trim()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-white shadow-sm transition-all hover:shadow-md hover:scale-105 disabled:opacity-40 disabled:scale-100"
+                aria-label="Send message"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Trigger */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2.5 rounded-full bg-gradient-to-r from-primary to-accent px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-primary/30 transition-shadow hover:shadow-primary/50"
+        aria-label={open ? 'Close support chat' : 'Open support chat'}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {open ? (
+            <motion.span
+              key="close"
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+              transition={{ duration: 0.15 }}
             >
               <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="flex h-64 flex-col gap-2 overflow-y-auto p-3">
-            {connecting && (
-              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Connecting…
-              </div>
-            )}
-            {!connecting && messages.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground mt-8">
-                Hi! How can we help you today?
-              </p>
-            )}
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={cn(
-                  'max-w-[85%] rounded-xl px-3 py-2 text-sm',
-                  m.userId === myUserId
-                    ? 'ml-auto bg-primary text-white'
-                    : 'bg-muted text-foreground',
-                )}
-              >
-                {m.text}
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-
-          <div className="flex gap-2 border-t border-border p-3">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void sendMessage();
-                }
-              }}
-              placeholder="Type a message…"
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-              disabled={!connected}
-            />
-            <button
-              onClick={() => void sendMessage()}
-              disabled={!connected || !input.trim()}
-              className="rounded-lg bg-primary px-3 py-1.5 text-white hover:bg-accent transition-colors disabled:opacity-50"
-              aria-label="Send message"
+            </motion.span>
+          ) : (
+            <motion.span
+              key="open"
+              initial={{ rotate: 90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: -90, opacity: 0 }}
+              transition={{ duration: 0.15 }}
             >
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-accent transition-colors"
-      >
-        <MessageSquare className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" />
+            </motion.span>
+          )}
+        </AnimatePresence>
         Support
-      </button>
+      </motion.button>
     </div>
   );
 }
