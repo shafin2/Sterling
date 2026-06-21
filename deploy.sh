@@ -7,8 +7,11 @@ echo "==> Pulling latest code..."
 cd "$APP_DIR"
 git pull origin main
 
+echo "==> Pre-build cleanup (free disk space)..."
+docker system prune -f --volumes=false
+
 echo "==> Building Docker images..."
-docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml build --no-cache
 
 echo "==> Starting / updating containers..."
 docker compose -f docker-compose.prod.yml up -d
@@ -26,7 +29,8 @@ done
 echo "==> Running database migrations..."
 docker compose -f docker-compose.prod.yml exec -T api node apps/api/scripts/migrate.mjs
 
-echo "==> Cleaning up old images..."
-docker image prune -f
+echo "==> Post-deploy cleanup (remove old images and build cache)..."
+docker image prune -af
+docker builder prune -af
 
 echo "==> Deploy complete."
