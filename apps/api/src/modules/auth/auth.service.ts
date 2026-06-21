@@ -398,23 +398,65 @@ export class AuthService {
       if (Object.keys(updates).length) {
         await this.db.update(schema.users).set(updates).where(eq(schema.users.id, existing.id));
       }
+      // Ensure existing user has a tenant/membership (may have been created via OAuth before tenant was auto-provisioned)
+      const existingMembership = await this.db.query.memberships.findFirst({
+        where: eq(schema.memberships.userId, existing.id),
+      });
+      if (!existingMembership) {
+        await this.provisionTenantForUser(existing.id, params.firstName);
+      }
       return { ...existing, ...updates };
     }
 
-    // 2. Create new user
-    const [user] = await this.db
-      .insert(schema.users)
-      .values({
-        email: params.email,
-        googleId: params.googleId,
-        firstName: params.firstName,
-        lastName: params.lastName,
-        avatar: params.avatar ?? undefined,
-        isEmailVerified: true,
-      } as typeof schema.users.$inferInsert)
-      .returning();
-    if (!user) throw new Error('Failed to create Google user');
+    // 2. Create new user + tenant in one transaction
+    const user = await this.db.transaction(async (tx) => {
+      const tenantName = `${params.firstName}'s Workspace`;
+      const baseSlug = params.email.split('@')[0]?.replace(/[^a-z0-9]/gi, '-').toLowerCase() ?? 'workspace';
+      const slug = `${baseSlug}-${Date.now().toString(36)}`;
+
+      const [tenant] = await tx
+        .insert(schema.tenants)
+        .values({ name: tenantName, slug })
+        .returning();
+      if (!tenant) throw new Error('Failed to create tenant for Google user');
+
+      const [newUser] = await tx
+        .insert(schema.users)
+        .values({
+          email: params.email,
+          googleId: params.googleId,
+          firstName: params.firstName,
+          lastName: params.lastName,
+          avatar: params.avatar ?? undefined,
+          isEmailVerified: true,
+        } as typeof schema.users.$inferInsert)
+        .returning();
+      if (!newUser) throw new Error('Failed to create Google user');
+
+      await tx.insert(schema.memberships).values({
+        userId: newUser.id,
+        tenantId: tenant.id,
+        role: 'owner' as Role,
+      });
+
+      return newUser;
+    });
     return user;
+  }
+
+  // ── provisionTenantForUser (used for OAuth users who have no tenant yet) ──
+
+  private async provisionTenantForUser(userId: string, firstName: string): Promise<void> {
+    const user = await this.db.query.users.findFirst({ where: eq(schema.users.id, userId) });
+    if (!user) return;
+    const tenantName = `${firstName}'s Workspace`;
+    const baseSlug = user.email.split('@')[0]?.replace(/[^a-z0-9]/gi, '-').toLowerCase() ?? 'workspace';
+    const slug = `${baseSlug}-${Date.now().toString(36)}`;
+    await this.db.transaction(async (tx) => {
+      const [tenant] = await tx.insert(schema.tenants).values({ name: tenantName, slug }).returning();
+      if (!tenant) throw new Error('Failed to create tenant');
+      await tx.insert(schema.memberships).values({ userId, tenantId: tenant.id, role: 'owner' as Role });
+    });
   }
 
   // ── generateTokensForUser ─────────────────────────────────────────────────
