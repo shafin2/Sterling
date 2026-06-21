@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2, Percent, Plus, Trash2, Edit2, Check, X,
   Globe, Phone, MapPin, Receipt, Upload, Image as ImageIcon,
@@ -59,11 +59,26 @@ type TaxRuleForm = z.infer<typeof TaxRuleSchema>;
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-const TABS = [
-  { id: 'company', label: 'Company Profile', icon: Building2 },
-  { id: 'tax', label: 'Tax Rules', icon: Percent },
-  { id: 'team', label: 'Team', icon: Users },
-  { id: 'billing', label: 'Billing', icon: CreditCard },
+const SETTINGS_NAV = [
+  {
+    group: 'Workspace',
+    items: [
+      { id: 'company', label: 'Company Profile', icon: Building2, description: 'Name, logo, contact info' },
+      { id: 'tax', label: 'Tax Rules', icon: Percent, description: 'Configure tax rates and rules' },
+    ],
+  },
+  {
+    group: 'People',
+    items: [
+      { id: 'team', label: 'Team & Access', icon: Users, description: 'Members, roles and invitations' },
+    ],
+  },
+  {
+    group: 'Account',
+    items: [
+      { id: 'billing', label: 'Billing & Plans', icon: CreditCard, description: 'Subscription and usage' },
+    ],
+  },
 ];
 
 // ─── Company Profile Tab ──────────────────────────────────────────────────────
@@ -1048,57 +1063,88 @@ export default function SettingsPage() {
     }
   }, [searchParams]);
 
+  const allItems = SETTINGS_NAV.flatMap((s) => s.items);
+  const activeItem = allItems.find((i) => i.id === tab) ?? allItems[0];
+
   return (
-    <div className="space-y-6">
-      <div>
+    <div>
+      {/* Page header */}
+      <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
-        <p className="mt-1 text-muted-foreground">
-          Manage your company profile and workspace configuration.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Manage your workspace, team and subscription.</p>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 rounded-xl border border-border bg-surface/30 p-1 w-fit">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={[
-              'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-              tab === id
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            ].join(' ')}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
+      {/* Two-column layout */}
+      <div className="flex gap-8 min-h-[600px]">
+
+        {/* Secondary nav rail */}
+        <aside className="w-52 shrink-0">
+          <nav className="space-y-5">
+            {SETTINGS_NAV.map(({ group, items }) => (
+              <div key={group}>
+                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                  {group}
+                </p>
+                <div className="space-y-0.5">
+                  {items.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => setTab(id)}
+                      className={[
+                        'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all text-left',
+                        tab === id
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-muted-foreground hover:bg-surface/60 hover:text-foreground',
+                      ].join(' ')}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </aside>
+
+        {/* Vertical divider */}
+        <div className="w-px shrink-0 bg-border" />
+
+        {/* Content pane */}
+        <div className="min-w-0 flex-1">
+          {/* Section header */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2">
+              <activeItem.icon className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">{activeItem.label}</h2>
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">{activeItem.description}</p>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {tab === 'company' && (
+              <motion.div key="company" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <CompanyProfileTab />
+              </motion.div>
+            )}
+            {tab === 'tax' && (
+              <motion.div key="tax" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <TaxRulesTab />
+              </motion.div>
+            )}
+            {tab === 'team' && (
+              <motion.div key="team" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <TeamTab />
+              </motion.div>
+            )}
+            {tab === 'billing' && (
+              <motion.div key="billing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <BillingTab />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-
-      {tab === 'company' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <CompanyProfileTab />
-        </motion.div>
-      )}
-
-      {tab === 'tax' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <TaxRulesTab />
-        </motion.div>
-      )}
-
-      {tab === 'team' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <TeamTab />
-        </motion.div>
-      )}
-
-      {tab === 'billing' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <BillingTab />
-        </motion.div>
-      )}
     </div>
   );
 }
