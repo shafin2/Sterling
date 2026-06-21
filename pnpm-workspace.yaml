@@ -11,3 +11,4 @@ allowBuilds:
   sharp: true
   puppeteer: true
   '@puppeteer/browsers': true
+  stream-chat: true
