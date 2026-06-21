@@ -29,13 +29,18 @@
 
 ## 2. Login Credentials
 
+> ⭐ **For the live demo use the Production → Tenant Owner `owner@acme.com` / `Owner@1234`** — that workspace is pre-loaded with the full demo dataset (8 clients, 15 invoices across every status, 6 employees, 3 payroll runs).
+
 | Role | Environment | Email | Password |
 |---|---|---|---|
-| **Tenant Owner** | Local | `shafin@test.com` | `Test@1234` |
+| **Tenant Owner** ⭐ (full demo data) | **Production** | `owner@acme.com` | `Owner@1234` |
+| **Accountant** (RBAC demo) | Production | `accountant@acme.com` | `Acct@1234` |
+| **Super-Admin** (`/admin`) | Production | `admin@sterling.com` | `Admin@1234` |
+| **Super-Admin** (alt) | Production | `superadmin@sterling.app` | `SuperAdmin1234!` |
+| **Tenant Owner** (full demo data) | Local | `owner@acme.com` | `Owner@1234` |
 | **Super-Admin** | Local | `superadmin@sterling.app` | `Admin@1234` |
-| **Super-Admin** | Production | <!-- PROD_ADMIN_CRED --> *(TODO: fill in prod super-admin creds)* | — |
 
-> The super-admin email default in `seed-admin.mjs` is `admin@sterling.app`. If you seeded with the override `superadmin@sterling.app`, use that. Confirm before the demo.
+> The Production and Local **Acme Corp** workspaces are both populated by `pnpm --filter @sterling/api seed:demo`. Re-running it wipes and recreates the `acme-corp-demo` tenant only — it never touches real tenants.
 
 ---
 
