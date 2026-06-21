@@ -12,7 +12,18 @@ import {
 import type { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { Injectable } from '@nestjs/common';
 import { ZodValidationPipe } from '../../common/pipes/zod.pipe';
+
+// Custom guard for the callback route — swallows passport errors so the
+// controller can handle them gracefully (redirect to login with error param)
+@Injectable()
+class GoogleCallbackGuard extends AuthGuard('google') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  override handleRequest(_err: any, user: any) {
+    return user ?? null;
+  }
+}
 import { ConfigService } from '@nestjs/config';
 import {
   RegisterSchema,
@@ -185,7 +196,7 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleCallbackGuard)
   @Get('google/callback')
   @ApiOperation({ summary: 'Google OAuth callback — sets cookies and redirects to app' })
   async googleAuthCallback(
