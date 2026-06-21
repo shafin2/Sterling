@@ -21,6 +21,7 @@ COPY --from=builder /app/packages/ ./packages/
 COPY --from=builder /app/apps/api/dist/ ./apps/api/dist/
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 
+ENV HUSKY=0
 RUN pnpm install --prod --frozen-lockfile
 
 ENV NODE_ENV=production
