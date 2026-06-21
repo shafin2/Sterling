@@ -16,6 +16,7 @@ import { clientsApi } from '@/lib/api/clients';
 import { templatesApi } from '@/lib/api/templates';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { AiAssistButton } from '@/components/ui/ai-assist-button';
 import { LiveInvoicePreview } from './live-invoice-preview';
 
 type FormItem = {
@@ -57,6 +58,7 @@ export function InvoiceEditor({ invoice }: InvoiceEditorProps) {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors, isDirty },
   } = useForm<FormValues>({
     defaultValues: invoice
@@ -512,7 +514,13 @@ export function InvoiceEditor({ invoice }: InvoiceEditorProps) {
           <div className="rounded-2xl border border-border bg-background p-4 sm:p-5 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Notes & Terms</h3>
             <div>
-              <label className={labelCls}>Notes (shown on invoice)</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className={labelCls}>Notes (shown on invoice)</label>
+                <AiAssistButton
+                  value={watch('notes') ?? ''}
+                  onResult={(r) => setValue('notes', r, { shouldDirty: true })}
+                />
+              </div>
               <textarea
                 {...register('notes')}
                 rows={3}
@@ -521,7 +529,13 @@ export function InvoiceEditor({ invoice }: InvoiceEditorProps) {
               />
             </div>
             <div>
-              <label className={labelCls}>Terms & Conditions</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className={labelCls}>Terms & Conditions</label>
+                <AiAssistButton
+                  value={watch('terms') ?? ''}
+                  onResult={(r) => setValue('terms', r, { shouldDirty: true })}
+                />
+              </div>
               <textarea
                 {...register('terms')}
                 rows={3}

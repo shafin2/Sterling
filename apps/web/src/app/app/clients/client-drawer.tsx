@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CreateClientSchema, type CreateClientDto } from '@sterling/shared';
 import { clientsApi, type Client } from '@/lib/api/clients';
 import { Button } from '@/components/ui/button';
+import { AiAssistButton } from '@/components/ui/ai-assist-button';
 
 interface ClientDrawerProps {
   open: boolean;
@@ -26,6 +27,7 @@ export function ClientDrawer({ open, client, onClose }: ClientDrawerProps) {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateClientDto>({
     resolver: zodResolver(CreateClientSchema),
@@ -201,14 +203,21 @@ export function ClientDrawer({ open, client, onClose }: ClientDrawerProps) {
                   </div>
                 </fieldset>
 
-                <Field label="Notes">
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className="text-sm font-medium text-foreground">Notes</label>
+                    <AiAssistButton
+                      value={watch('notes') ?? ''}
+                      onResult={(r) => setValue('notes', r, { shouldDirty: true })}
+                    />
+                  </div>
                   <textarea
                     {...register('notes')}
                     rows={3}
                     placeholder="Internal notes…"
                     className={`${inputCls} resize-none`}
                   />
-                </Field>
+                </div>
 
                 <Field label="Status">
                   <select {...register('status')} className={inputCls}>

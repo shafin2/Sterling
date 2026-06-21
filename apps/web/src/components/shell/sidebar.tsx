@@ -15,6 +15,7 @@ import {
   Palette,
   FolderOpen,
   Shield,
+  Sparkles,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: '/app/employees/departments', label: 'Departments', icon: FolderOpen },
   { href: '/app/payroll', label: 'Payroll', icon: Briefcase },
   { href: '/app/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/app/ai', label: 'AI Assistant', icon: Sparkles },
   { href: '/app/audit-logs', label: 'Audit Logs', icon: Shield },
 ];
 
