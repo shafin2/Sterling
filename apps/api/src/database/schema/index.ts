@@ -13,3 +13,4 @@ export * from './payments';
 export * from './invoice-templates';
 export * from './payroll';
 export * from './tax-rules';
+export * from './invites';

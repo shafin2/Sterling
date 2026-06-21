@@ -9,9 +9,12 @@ import { motion } from 'framer-motion';
 import {
   Building2, Percent, Plus, Trash2, Edit2, Check, X,
   Globe, Phone, MapPin, Receipt, Upload, Image as ImageIcon,
+  Users, Mail,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { taxRulesApi, bpsToPercent, percentToBps, type TaxRule } from '@/lib/api/tax-rules';
+import { teamsApi, type TeamMember, type PendingInvite, type Role } from '@/lib/api/teams';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,6 +60,7 @@ type TaxRuleForm = z.infer<typeof TaxRuleSchema>;
 const TABS = [
   { id: 'company', label: 'Company Profile', icon: Building2 },
   { id: 'tax', label: 'Tax Rules', icon: Percent },
+  { id: 'team', label: 'Team', icon: Users },
 ];
 
 // ─── Company Profile Tab ──────────────────────────────────────────────────────
@@ -455,6 +459,389 @@ function TaxRuleForm({
   );
 }
 
+// ─── Team Tab ─────────────────────────────────────────────────────────────────
+
+// Suppress unused import warning — TeamMember and PendingInvite are used as types below
+type _TeamMember = TeamMember;
+type _PendingInvite = PendingInvite;
+
+const roleColors: Record<Role, string> = {
+  owner: 'bg-primary/15 text-primary',
+  admin: 'bg-accent/15 text-accent',
+  accountant: 'bg-warning/15 text-warning',
+  hr: 'bg-success/15 text-success',
+  viewer: 'bg-muted/20 text-muted-foreground',
+};
+
+const roleLabels: Record<Role, string> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  accountant: 'Accountant',
+  hr: 'HR',
+  viewer: 'Viewer',
+};
+
+function getInitials(first: string, last: string) {
+  return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
+}
+
+// Simple modal dialog using AnimatePresence pattern already in the codebase
+function InviteDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [email, setEmail] = React.useState('');
+  const [role, setRole] = React.useState<Role>('viewer');
+  const [error, setError] = React.useState('');
+
+  const inviteMutation = useMutation({
+    mutationFn: (dto: { email: string; role: Role }) => teamsApi.createInvite(dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['team', 'invites'] });
+      setEmail('');
+      setRole('viewer');
+      setError('');
+      toast.success('Invitation sent');
+      onClose();
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to send invite';
+      setError(msg);
+    },
+  });
+
+  function handleSend() {
+    setError('');
+    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    inviteMutation.mutate({ email, role });
+  }
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div
+          className="pointer-events-auto w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="invite-dialog-title"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-5 flex items-center justify-between">
+            <h2 id="invite-dialog-title" className="text-base font-semibold text-foreground">
+              Invite a team member
+            </h2>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Email address</label>
+              <Input
+                type="email"
+                placeholder="colleague@company.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Role</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+                className="h-10 w-full rounded-lg border border-border bg-input px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50"
+              >
+                <option value="viewer">Viewer — read-only access</option>
+                <option value="accountant">Accountant — invoices &amp; payroll</option>
+                <option value="hr">HR Manager — employees &amp; payroll</option>
+                <option value="admin">Admin — full access</option>
+              </select>
+            </div>
+            {error && <p className="text-sm text-danger">{error}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button onClick={handleSend} loading={inviteMutation.isPending}>
+                Send invite
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function TeamTab() {
+  const qc = useQueryClient();
+  const [showInviteDialog, setShowInviteDialog] = React.useState(false);
+  const [removingUserId, setRemovingUserId] = React.useState<string | null>(null);
+
+  const { data: members = [], isLoading: membersLoading } = useQuery({
+    queryKey: ['team', 'members'],
+    queryFn: () => teamsApi.getMembers(),
+  });
+
+  const { data: invites = [], isLoading: invitesLoading } = useQuery({
+    queryKey: ['team', 'invites'],
+    queryFn: () => teamsApi.getPendingInvites(),
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: Role }) =>
+      teamsApi.updateMemberRole(userId, role),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['team', 'members'] });
+      toast.success('Role updated');
+    },
+    onError: () => toast.error('Failed to update role'),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (userId: string) => teamsApi.removeMember(userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['team', 'members'] });
+      setRemovingUserId(null);
+      toast.success('Member removed');
+    },
+    onError: () => toast.error('Failed to remove member'),
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: (id: string) => teamsApi.resendInvite(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['team', 'invites'] });
+      toast.success('Invite resent');
+    },
+    onError: () => toast.error('Failed to resend invite'),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => teamsApi.cancelInvite(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['team', 'invites'] });
+      toast.success('Invite cancelled');
+    },
+    onError: () => toast.error('Failed to cancel invite'),
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Members section */}
+      <div className="rounded-xl border border-border bg-card p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Team Members</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Manage who has access to your workspace.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setShowInviteDialog(true)}>
+            <Plus className="h-4 w-4" />
+            Invite member
+          </Button>
+        </div>
+
+        {membersLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : members.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-8 text-center">
+            <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No team members yet.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {members.map((member) => (
+              <motion.div
+                key={member.userId}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-4 py-3"
+              >
+                {/* Avatar */}
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 overflow-hidden">
+                  {member.avatar ? (
+                    <img src={member.avatar} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-semibold text-primary">
+                      {getInitials(member.firstName, member.lastName)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Name / email */}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {member.firstName} {member.lastName}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+                </div>
+
+                {/* Role pill */}
+                <span
+                  className={`hidden sm:inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleColors[member.role]}`}
+                >
+                  {roleLabels[member.role]}
+                </span>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1">
+                  {member.role !== 'owner' && (
+                    <select
+                      value={member.role}
+                      onChange={(e) =>
+                        updateRoleMutation.mutate({
+                          userId: member.userId,
+                          role: e.target.value as Role,
+                        })
+                      }
+                      className="h-8 rounded-lg border border-border bg-input px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      aria-label="Change role"
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="accountant">Accountant</option>
+                      <option value="hr">HR</option>
+                      <option value="viewer">Viewer</option>
+                      <option value="owner">Owner</option>
+                    </select>
+                  )}
+                  <button
+                    onClick={() => setRemovingUserId(member.userId)}
+                    className="rounded-lg p-1.5 text-muted-foreground hover:text-danger transition-colors"
+                    aria-label="Remove member"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Pending invites */}
+      {(invites.length > 0 || invitesLoading) && (
+        <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Pending Invitations</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              These users have been invited but haven&apos;t accepted yet.
+            </p>
+          </div>
+
+          {invitesLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <Skeleton key={i} className="h-14 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {invites.map((invite) => (
+                <motion.div
+                  key={invite.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-surface/30 px-4 py-3"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted/20">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{invite.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Invited by {invite.invitedBy} · Expires{' '}
+                      {new Date(invite.expiresAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span
+                    className={`hidden sm:inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleColors[invite.role]}`}
+                  >
+                    {roleLabels[invite.role]}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => resendMutation.mutate(invite.id)}
+                      disabled={resendMutation.isPending}
+                      className="rounded-lg px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-surface transition-colors disabled:opacity-50"
+                    >
+                      Resend
+                    </button>
+                    <button
+                      onClick={() => cancelMutation.mutate(invite.id)}
+                      disabled={cancelMutation.isPending}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:text-danger transition-colors disabled:opacity-50"
+                      aria-label="Cancel invite"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Invite dialog */}
+      <InviteDialog open={showInviteDialog} onClose={() => setShowInviteDialog(false)} />
+
+      {/* Remove member confirm dialog */}
+      <ConfirmDialog
+        open={!!removingUserId}
+        title="Remove team member?"
+        description="This person will lose access to the workspace immediately. You can re-invite them later."
+        confirmLabel="Remove"
+        variant="danger"
+        loading={removeMutation.isPending}
+        onConfirm={() => {
+          if (removingUserId) removeMutation.mutate(removingUserId);
+        }}
+        onCancel={() => setRemovingUserId(null)}
+      />
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -497,6 +884,12 @@ export default function SettingsPage() {
       {tab === 'tax' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <TaxRulesTab />
+        </motion.div>
+      )}
+
+      {tab === 'team' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <TeamTab />
         </motion.div>
       )}
     </div>

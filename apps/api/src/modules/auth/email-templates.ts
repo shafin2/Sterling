@@ -204,3 +204,51 @@ export function passwordResetEmailHtml(firstName: string, resetUrl: string): str
 export function passwordResetEmailText(firstName: string, resetUrl: string): string {
   return `Hi ${firstName},\n\nWe received a request to reset your Sterling password.\n\nReset your password (valid for 1 hour):\n${resetUrl}\n\nIf you didn't request this, ignore this email.`;
 }
+
+// ── Invite email ─────────────────────────────────────────────────────────────
+
+export function inviteEmailHtml(
+  inviterName: string,
+  tenantName: string,
+  role: string,
+  inviteUrl: string,
+): string {
+  const body = `
+    <div style="padding:36px 36px 32px;">
+      <div style="width:48px;height:48px;background:${BRAND.primary}15;border-radius:12px;text-align:center;line-height:48px;font-size:22px;margin-bottom:20px;">🤝</div>
+
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:${BRAND.text};letter-spacing:-0.03em;">
+        You're invited to join ${tenantName}
+      </h1>
+      <p style="margin:0 0 8px;font-size:15px;color:${BRAND.muted};line-height:1.6;">
+        <strong style="color:${BRAND.text};">${inviterName}</strong> has invited you to join <strong style="color:${BRAND.text};">${tenantName}</strong> on Sterling as a <strong style="color:${BRAND.text};">${role}</strong>.
+      </p>
+      <p style="margin:0 0 28px;font-size:15px;color:${BRAND.muted};line-height:1.6;">
+        Click the button below to accept your invitation. This link expires in <strong style="color:${BRAND.text};">7 days</strong>.
+      </p>
+
+      ${button('Accept invitation', inviteUrl, BRAND.primary)}
+
+      <p style="margin:28px 0 0;font-size:13px;color:${BRAND.muted};line-height:1.6;">
+        Or copy and paste this URL into your browser:<br/>
+        <a href="${inviteUrl}" style="color:${BRAND.accent};word-break:break-all;">${inviteUrl}</a>
+      </p>
+    </div>
+
+    <div style="padding:20px 36px;border-top:1px solid ${BRAND.border};background:#fafbff;">
+      <p style="margin:0;font-size:12px;color:${BRAND.muted};line-height:1.6;">
+        If you weren't expecting this invitation, you can safely ignore this email.
+      </p>
+    </div>`;
+
+  return layout(body);
+}
+
+export function inviteEmailText(
+  inviterName: string,
+  tenantName: string,
+  role: string,
+  inviteUrl: string,
+): string {
+  return `${inviterName} has invited you to join ${tenantName} on Sterling as a ${role}.\n\nAccept your invitation (valid for 7 days):\n${inviteUrl}\n\nIf you weren't expecting this invitation, you can safely ignore this email.`;
+}
