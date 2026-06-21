@@ -15,6 +15,11 @@ export class StreamController {
   @ApiOperation({ summary: 'Get Stream Chat token for authenticated user' })
   async getToken(@CurrentUser() user: JwtPayload) {
     const name = user.email;
+    // Superadmin gets Stream admin role and no support channel created for them
+    if (user.isSuperAdmin) {
+      const tokenData = await this.streamService.getUserToken(user.sub, name, user.email, 'admin');
+      return { ...tokenData, channelId: null };
+    }
     const [tokenData, channelData] = await Promise.all([
       this.streamService.getUserToken(user.sub, name, user.email, user.role ?? 'user'),
       this.streamService.getOrCreateSupportChannel(user.sub, name),
