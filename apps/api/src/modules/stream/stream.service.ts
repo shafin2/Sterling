@@ -73,6 +73,7 @@ export class StreamService {
     if (!this.client) return { channelId: `support_${userId}` };
     const channelId = `support_${userId}`;
     const channel = this.client.channel('messaging', channelId, {
+      created_by_id: userId,
       members: [userId],
       ...({ name: `Support — ${userName}`, custom_type: 'support' } as any),
     });
