@@ -848,25 +848,28 @@ const PLANS = [
     id: 'free' as const,
     name: 'Free',
     price: '$0',
+    priceNote: 'forever',
     icon: Zap,
-    color: 'text-muted-foreground',
-    features: ['5 invoices/month', '1 user', 'Basic templates', 'Email support'],
+    popular: false,
+    features: ['5 invoices / month', '1 team member', 'Basic PDF templates', 'Email support'],
   },
   {
     id: 'pro' as const,
     name: 'Pro',
     price: '$29',
+    priceNote: 'per month',
     icon: Crown,
-    color: 'text-accent',
-    features: ['Unlimited invoices', '5 users', 'Custom designer', 'AI assistant', 'Priority support'],
+    popular: true,
+    features: ['Unlimited invoices', 'Up to 5 team members', 'Custom invoice designer', 'AI financial assistant', 'Payment reminders', 'Priority support'],
   },
   {
     id: 'enterprise' as const,
     name: 'Enterprise',
     price: '$79',
+    priceNote: 'per month',
     icon: Crown,
-    color: 'text-primary',
-    features: ['Everything in Pro', 'Unlimited users', 'Advanced analytics', 'SLA', 'Dedicated support'],
+    popular: false,
+    features: ['Everything in Pro', 'Unlimited team members', 'Advanced analytics & exports', 'Dedicated SLA', 'Onboarding & training', 'Dedicated account manager'],
   },
 ];
 
@@ -937,52 +940,89 @@ function BillingTab() {
       </div>
 
       {/* Plan cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
         {PLANS.map((plan) => {
           const isCurrent = currentPlan === plan.id;
+          const isPro = plan.popular;
           const Icon = plan.icon;
+          const isFree = plan.id === 'free';
           return (
             <div
               key={plan.id}
               className={[
-                'relative rounded-xl border p-5 transition-all',
-                isCurrent
-                  ? 'border-primary bg-primary/5 shadow-md'
-                  : 'border-border bg-card hover:border-accent/60',
+                'relative flex flex-col rounded-2xl border p-6 transition-all duration-200 overflow-visible',
+                isPro
+                  ? 'border-2 border-primary/60 bg-gradient-to-b from-primary/5 to-accent/5 shadow-xl shadow-primary/10 scale-[1.02]'
+                  : isCurrent
+                    ? 'border-primary/40 bg-primary/5 shadow-md'
+                    : 'border-border bg-card hover:border-accent/40 hover:shadow-lg',
+                isFree ? 'opacity-85' : '',
               ].join(' ')}
             >
-              {isCurrent && (
-                <div className="absolute top-3 right-3">
+              {/* Most Popular badge */}
+              {isPro && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                  <span className="bg-gradient-to-r from-primary to-accent text-white text-xs font-semibold px-4 py-1 rounded-full shadow-md">
+                    Most Popular
+                  </span>
+                </div>
+              )}
+
+              {/* Current plan checkmark */}
+              {isCurrent && !isPro && (
+                <div className="absolute top-4 right-4">
                   <CheckCircle2 className="h-5 w-5 text-primary" />
                 </div>
               )}
-              <Icon className={`h-6 w-6 mb-3 ${plan.color}`} />
-              <p className="font-semibold text-foreground">{plan.name}</p>
-              <p className="text-2xl font-bold text-foreground mt-1">
-                {plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span>
-              </p>
-              <ul className="mt-4 space-y-2">
+
+              {/* Header */}
+              <div className="mb-5">
+                <div className={[
+                  'inline-flex h-10 w-10 items-center justify-center rounded-xl mb-3',
+                  isPro ? 'bg-gradient-to-br from-primary to-accent text-white' : 'bg-muted text-muted-foreground',
+                ].join(' ')}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <p className="text-lg font-bold text-foreground">{plan.name}</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-4xl font-extrabold tracking-tight text-foreground">{plan.price}</span>
+                  <span className="text-sm text-muted-foreground">{plan.priceNote}</span>
+                </div>
+              </div>
+
+              {/* Features */}
+              <ul className="flex-1 space-y-2.5 mb-6">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Check className="h-3.5 w-3.5 text-success shrink-0" />
-                    {f}
+                  <li key={f} className="flex items-start gap-2.5 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" />
+                    <span className="text-foreground">{f}</span>
                   </li>
                 ))}
               </ul>
-              <div className="mt-5">
+
+              {/* CTA */}
+              <div>
                 {isCurrent ? (
-                  <Button variant="outline" className="w-full" disabled>Current plan</Button>
-                ) : plan.id === 'free' ? (
+                  <Button variant="outline" className="w-full" disabled>
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-primary" />
+                    Current plan
+                  </Button>
+                ) : isFree ? (
                   <Button variant="outline" className="w-full" onClick={handlePortal} disabled={loading === 'portal'}>
-                    Downgrade
+                    {loading === 'portal' ? 'Opening…' : 'Downgrade to Free'}
                   </Button>
                 ) : (
                   <Button
-                    className="w-full"
-                    onClick={() => handleUpgrade(plan.id)}
+                    className={[
+                      'w-full font-semibold transition-all duration-150',
+                      isPro
+                        ? 'bg-gradient-to-r from-primary to-accent text-white shadow-md hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.01]'
+                        : '',
+                    ].join(' ')}
+                    onClick={() => handleUpgrade(plan.id as 'pro' | 'enterprise')}
                     disabled={loading === plan.id}
                   >
-                    {loading === plan.id ? 'Redirecting…' : `Upgrade to ${plan.name}`}
+                    {loading === plan.id ? 'Redirecting…' : `Get ${plan.name}`}
                   </Button>
                 )}
               </div>
