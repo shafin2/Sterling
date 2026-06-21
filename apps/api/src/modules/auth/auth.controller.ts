@@ -4,13 +4,16 @@ import {
   Get,
   Body,
   Res,
+  Req,
   HttpCode,
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 import { ZodValidationPipe } from '../../common/pipes/zod.pipe';
+import { ConfigService } from '@nestjs/config';
 import {
   RegisterSchema,
   LoginSchema,
@@ -32,6 +35,7 @@ import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from './auth.service';
+import type * as schema from '../../database/schema';
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -43,7 +47,10 @@ const COOKIE_OPTIONS = {
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -167,6 +174,30 @@ export class AuthController {
   ) {
     await this.authService.resetPassword(dto.token, dto.password);
     return { message: 'Password reset successfully' };
+  }
+
+  @Public()
+  @UseGuards(AuthGuard('google'))
+  @Get('google')
+  @ApiOperation({ summary: 'Initiate Google OAuth — redirects to Google consent screen' })
+  googleAuth() {
+    // Passport handles the redirect
+  }
+
+  @Public()
+  @UseGuards(AuthGuard('google'))
+  @Get('google/callback')
+  @ApiOperation({ summary: 'Google OAuth callback — sets cookies and redirects to app' })
+  async googleAuthCallback(
+    @Req() req: Request & { user: typeof schema.users.$inferSelect },
+    @Res() res: Response,
+  ) {
+    const tokens = await this.authService.generateTokensForUser(req.user);
+    this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+
+    const webUrl = this.configService.get<string>('WEB_URL') ?? 'http://localhost:3000';
+    const redirectTo = tokens.isSuperAdmin ? `${webUrl}/admin` : `${webUrl}/app`;
+    return res.redirect(redirectTo);
   }
 
   private setTokenCookies(res: Response, accessToken: string, refreshToken: string) {

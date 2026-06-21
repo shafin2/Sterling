@@ -67,7 +67,7 @@ Be specific with numbers. Keep each highlight under 15 words. Return raw JSON on
 
     try {
       const completion = await this.groq.chat.completions.create({
-        model: 'llama3-8b-8192',
+        model: 'llama-3.1-8b-instant',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 512,
         temperature: 0.4,

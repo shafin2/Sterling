@@ -3,7 +3,8 @@ import { pgTable, uuid, varchar, text, timestamp, boolean, integer } from 'drizz
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
+  passwordHash: text('password_hash'),
+  googleId: varchar('google_id', { length: 255 }),
   firstName: varchar('first_name', { length: 50 }).notNull(),
   lastName: varchar('last_name', { length: 50 }).notNull(),
   avatar: text('avatar'),

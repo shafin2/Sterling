@@ -45,7 +45,7 @@ export class AiService {
 
     try {
       const completion = await this.groq.chat.completions.create({
-        model: 'llama3-8b-8192',
+        model: 'llama-3.1-8b-instant',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: params.text },
@@ -91,7 +91,7 @@ FOLLOWUPS:["question 1","question 2","question 3"]`;
 
     try {
       const completion = await this.groq.chat.completions.create({
-        model: 'llama3-70b-8192',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: systemPrompt },
           ...params.messages,

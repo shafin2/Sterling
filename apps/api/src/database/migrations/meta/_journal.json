@@ -64,6 +64,13 @@
       "when": 1750636800000,
       "tag": "0008_admin_panel",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1750723200000,
+      "tag": "0009_google_oauth",
+      "breakpoints": true
     }
   ]
 }

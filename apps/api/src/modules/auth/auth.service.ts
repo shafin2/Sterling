@@ -11,7 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { createHash } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as argon2 from 'argon2';
 import { v4 as uuidv4 } from 'uuid';
@@ -211,6 +211,11 @@ export class AuthService {
     });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
+    if (!user.passwordHash) {
+      // Google-only account — cannot use password login
+      throw new UnauthorizedException('This account uses Google sign-in. Please continue with Google.');
+    }
+
     const valid = await argon2.verify(user.passwordHash, dto.password);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
@@ -365,6 +370,75 @@ export class AuthService {
         refreshTokenHash: null,
       })
       .where(eq(schema.users.id, user.id));
+  }
+
+  // ── findOrCreateGoogleUser ────────────────────────────────────────────────
+
+  async findOrCreateGoogleUser(params: {
+    googleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    avatar: string | null;
+  }): Promise<typeof schema.users.$inferSelect> {
+    // 1. Find by googleId or email
+    const existing = await this.db.query.users.findFirst({
+      where: or(
+        eq(schema.users.googleId, params.googleId),
+        eq(schema.users.email, params.email),
+      ),
+    });
+
+    if (existing) {
+      // Link googleId and avatar if not already set
+      const updates: Partial<typeof schema.users.$inferInsert> = {};
+      if (!existing.googleId) updates.googleId = params.googleId;
+      if (!existing.avatar && params.avatar) updates.avatar = params.avatar;
+      if (!existing.isEmailVerified) updates.isEmailVerified = true;
+      if (Object.keys(updates).length) {
+        await this.db.update(schema.users).set(updates).where(eq(schema.users.id, existing.id));
+      }
+      return { ...existing, ...updates };
+    }
+
+    // 2. Create new user
+    const [user] = await this.db
+      .insert(schema.users)
+      .values({
+        email: params.email,
+        googleId: params.googleId,
+        firstName: params.firstName,
+        lastName: params.lastName,
+        avatar: params.avatar ?? undefined,
+        isEmailVerified: true,
+      } as typeof schema.users.$inferInsert)
+      .returning();
+    if (!user) throw new Error('Failed to create Google user');
+    return user;
+  }
+
+  // ── generateTokensForUser ─────────────────────────────────────────────────
+
+  async generateTokensForUser(user: typeof schema.users.$inferSelect): Promise<AuthTokens> {
+    const membership = await this.db.query.memberships.findFirst({
+      where: eq(schema.memberships.userId, user.id),
+    });
+
+    const tokens = this.generateTokens({
+      sub: user.id,
+      email: user.email,
+      tenantId: membership?.tenantId ?? '',
+      role: membership?.role ?? '',
+      emailVerified: user.isEmailVerified,
+      isSuperAdmin: user.isSuperAdmin,
+    });
+
+    await this.db
+      .update(schema.users)
+      .set({ lastLoginAt: new Date(), refreshTokenHash: hashToken(tokens.refreshToken) })
+      .where(eq(schema.users.id, user.id));
+
+    return tokens;
   }
 
   // ── private ───────────────────────────────────────────────────────────────
