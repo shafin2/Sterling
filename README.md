@@ -106,6 +106,20 @@ The script does a full round-trip: upload → read → delete a small test objec
 
 ---
 
+## 🌐 Live site
+
+| URL | What |
+|---|---|
+| `https://sterling.shafinzaman.dev` | Web app |
+| `https://sterling.shafinzaman.dev/api/v1/health` | API health check |
+| `https://sterling.shafinzaman.dev/api/docs` | Swagger / API docs |
+| `https://sterling.shafinzaman.dev/api/v1/queues?apiKey=<BULL_BOARD_API_KEY>` | BullMQ queue dashboard |
+
+> Queue dashboard: include `?apiKey=<BULL_BOARD_API_KEY>` on the **first** visit — the browser gets a
+> 2-hour session cookie so subsequent loads don't need the key in the URL.
+
+---
+
 ## 🚀 Run it locally (no Docker)
 
 **Prereqs:** Node ≥ 22, pnpm ≥ 10, local **PostgreSQL 16** and **Redis**.
@@ -141,7 +155,8 @@ pnpm --filter @sterling/web dev        # terminal 3 — Next.js on :3000
 ## 📦 Deploy (EC2 / Docker)
 
 ```bash
-cp .env.production.example .env.production
+cp .env.example .env
+# edit .env — fill in JWT secrets, SMTP, S3, API keys
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
