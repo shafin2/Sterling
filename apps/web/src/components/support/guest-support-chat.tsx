@@ -40,10 +40,9 @@ export function GuestSupportChat() {
 
       const channelId = `support_${userId}`;
       const ch = client.channel('messaging', channelId, {
-        name: `Guest — ${userId}`,
         custom_type: 'support',
         members: [userId],
-      });
+      } as Record<string, unknown>);
       await ch.create();
       await ch.watch();
 
