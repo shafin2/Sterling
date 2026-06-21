@@ -19,6 +19,8 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/packages/ ./packages/
 COPY --from=builder /app/apps/api/dist/ ./apps/api/dist/
+COPY --from=builder /app/apps/api/scripts/ ./apps/api/scripts/
+COPY --from=builder /app/apps/api/src/database/migrations/ ./apps/api/src/database/migrations/
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 
 ENV HUSKY=0
