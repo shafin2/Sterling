@@ -19,6 +19,8 @@ import { ExportsModule } from './modules/exports/exports.module';
 import { TaxRulesModule } from './modules/tax-rules/tax-rules.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { HealthModule } from './modules/health/health.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { AiModule } from './modules/ai/ai.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './modules/auth/guards/permissions.guard';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
@@ -66,6 +68,8 @@ import envConfig from './config/env.config';
     TaxRulesModule,
     AuditLogsModule,
     HealthModule,
+    AdminModule,
+    AiModule,
   ],
   providers: [
     // Global auth guard — every route requires a valid JWT unless decorated @Public()

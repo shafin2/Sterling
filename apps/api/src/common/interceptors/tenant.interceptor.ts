@@ -20,7 +20,11 @@ export class TenantInterceptor implements NestInterceptor {
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest<Request & { user?: { tenantId?: string } }>();
+    const request = context.switchToHttp().getRequest<Request & { user?: { tenantId?: string; isSuperAdmin?: boolean } }>();
+
+    // Superadmin routes are cross-tenant — skip RLS context
+    if (request.user?.isSuperAdmin) return next.handle();
+
     const tenantId = request.user?.tenantId;
 
     if (!tenantId) return next.handle();

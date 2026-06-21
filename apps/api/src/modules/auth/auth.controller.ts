@@ -68,7 +68,7 @@ export class AuthController {
   ) {
     const tokens = await this.authService.login(dto);
     this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
-    return { message: 'Login successful' };
+    return { message: 'Login successful', isSuperAdmin: tokens.isSuperAdmin };
   }
 
   // Logout is @Public so it works even with an expired access token.

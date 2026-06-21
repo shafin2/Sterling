@@ -36,8 +36,11 @@ export function middleware(request: NextRequest) {
   // Always allow public paths
   if (isPublic(pathname)) return NextResponse.next();
 
-  // Only protect /app/* routes
-  if (!pathname.startsWith('/app')) return NextResponse.next();
+  const isAppRoute = pathname.startsWith('/app');
+  const isAdminRoute = pathname.startsWith('/admin');
+
+  // Only protect /app/* and /admin/* routes
+  if (!isAppRoute && !isAdminRoute) return NextResponse.next();
 
   const token = request.cookies.get('access_token')?.value;
 
@@ -56,8 +59,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Email not verified → send to check-email page
-  if (payload['emailVerified'] === false) {
+  // Superadmin trying to access /app → redirect to /admin
+  if (payload['isSuperAdmin'] === true && isAppRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/admin';
+    return NextResponse.redirect(url);
+  }
+
+  // Non-superadmin trying to access /admin → redirect to /app
+  if (payload['isSuperAdmin'] !== true && isAdminRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/app';
+    return NextResponse.redirect(url);
+  }
+
+  // Email not verified → send to check-email page (only for /app routes, superadmin skips)
+  if (isAppRoute && payload['emailVerified'] === false) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/check-email';
     if (typeof payload['email'] === 'string') {
@@ -70,5 +87,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/app/:path*'],
+  matcher: ['/app/:path*', '/admin/:path*'],
 };

@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -13,6 +13,7 @@ export const users = pgTable('users', {
   refreshTokenHash: text('refresh_token_hash'),
   passwordResetToken: text('password_reset_token'),
   passwordResetExpiresAt: timestamp('password_reset_expires_at', { withTimezone: true }),
+  isSuperAdmin: boolean('is_super_admin').notNull().default(false),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

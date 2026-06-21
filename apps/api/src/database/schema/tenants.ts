@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 
 export const tenants = pgTable('tenants', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -13,6 +13,11 @@ export const tenants = pgTable('tenants', {
   currency: varchar('currency', { length: 10 }).notNull().default('PKR'),
   taxId: varchar('tax_id', { length: 50 }),
   isActive: boolean('is_active').notNull().default(true),
+  plan: varchar('plan', { length: 20 }).notNull().default('free'),
+  suspendedAt: timestamp('suspended_at', { withTimezone: true }),
+  invoiceCount: integer('invoice_count').notNull().default(0),
+  memberCount: integer('member_count').notNull().default(0),
+  lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

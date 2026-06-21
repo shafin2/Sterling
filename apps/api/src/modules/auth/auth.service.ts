@@ -35,11 +35,13 @@ export interface JwtPayload {
   tenantId: string;
   role: string;
   emailVerified: boolean;
+  isSuperAdmin: boolean;
 }
 
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+  isSuperAdmin: boolean;
 }
 
 function hashToken(token: string): string {
@@ -110,6 +112,7 @@ export class AuthService {
       tenantId: tenant.id,
       role: 'owner',
       emailVerified: false,
+      isSuperAdmin: false,
     });
 
     await this.db
@@ -159,6 +162,7 @@ export class AuthService {
       tenantId: membership?.tenantId ?? '',
       role: membership?.role ?? 'owner',
       emailVerified: true,
+      isSuperAdmin: user.isSuperAdmin,
     });
 
     // Rotate the refresh token hash
@@ -215,14 +219,18 @@ export class AuthService {
     const membership = await this.db.query.memberships.findFirst({
       where: eq(schema.memberships.userId, user.id),
     });
-    if (!membership) throw new UnauthorizedException('No tenant membership found');
+
+    if (!user.isSuperAdmin && !membership) {
+      throw new UnauthorizedException('No tenant membership found');
+    }
 
     const tokens = this.generateTokens({
       sub: user.id,
       email: user.email,
-      tenantId: membership.tenantId,
-      role: membership.role,
+      tenantId: membership?.tenantId ?? '',
+      role: membership?.role ?? '',
       emailVerified: user.isEmailVerified,
+      isSuperAdmin: user.isSuperAdmin,
     });
 
     await this.db
@@ -245,9 +253,11 @@ export class AuthService {
       where: eq(schema.memberships.userId, userId),
     });
 
-    const tenant = await this.db.query.tenants.findFirst({
-      where: eq(schema.tenants.id, tenantId),
-    });
+    const tenant = tenantId
+      ? await this.db.query.tenants.findFirst({
+          where: eq(schema.tenants.id, tenantId),
+        })
+      : null;
 
     return {
       id: user.id,
@@ -256,6 +266,7 @@ export class AuthService {
       lastName: user.lastName,
       avatar: user.avatar,
       isEmailVerified: user.isEmailVerified,
+      isSuperAdmin: user.isSuperAdmin,
       role: membership?.role ?? null,
       tenant: tenant
         ? { id: tenant.id, name: tenant.name, slug: tenant.slug, logo: tenant.logo }
@@ -286,7 +297,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token reuse detected — please log in again');
     }
 
-    const tokens = this.generateTokens({ sub: userId, email: user.email, tenantId, role, emailVerified: user.isEmailVerified });
+    const tokens = this.generateTokens({ sub: userId, email: user.email, tenantId, role, emailVerified: user.isEmailVerified, isSuperAdmin: user.isSuperAdmin });
 
     await this.db
       .update(schema.users)
@@ -369,6 +380,6 @@ export class AuthService {
       expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
     } as object);
 
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken, isSuperAdmin: payload.isSuperAdmin };
   }
 }

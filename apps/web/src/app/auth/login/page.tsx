@@ -25,9 +25,9 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginDto) => {
     try {
-      await api.post('auth/login', { json: data });
+      const res = await api.post('auth/login', { json: data }).json<{ isSuperAdmin?: boolean }>();
       toast.success('Welcome back!');
-      router.push('/app');
+      router.push(res?.isSuperAdmin ? '/admin' : '/app');
     } catch {
       toast.error('Invalid email or password');
     }

@@ -20,6 +20,7 @@ async function seed() {
       name: 'Acme Corp',
       slug: 'acme-corp',
       currency: 'PKR',
+      plan: 'pro',
     } as any)
     .onConflictDoNothing()
     .returning();
@@ -52,9 +53,24 @@ async function seed() {
     role: 'owner',
   } as any);
 
+  // Super admin user (no tenant)
+  const superAdminHash = await argon2.hash('SuperAdmin1234!');
+  await db
+    .insert(schema.users)
+    .values({
+      email: 'superadmin@sterling.app',
+      passwordHash: superAdminHash,
+      firstName: 'Super',
+      lastName: 'Admin',
+      isEmailVerified: true,
+      isSuperAdmin: true,
+    } as any)
+    .onConflictDoNothing();
+
   console.warn(`Seed complete.`);
-  console.warn(`  Tenant: ${tenant.name} (slug: ${tenant.slug})`);
-  console.warn(`  Owner:  ${user.email} / Admin1234!`);
+  console.warn(`  Tenant:     ${tenant.name} (slug: ${tenant.slug})`);
+  console.warn(`  Owner:      ${user.email} / Admin1234!`);
+  console.warn(`  SuperAdmin: superadmin@sterling.app / SuperAdmin1234!`);
 
   await pool.end();
 }
