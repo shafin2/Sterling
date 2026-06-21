@@ -34,6 +34,11 @@ const EnvSchema = z.object({
   // Stream Chat
   STREAM_API_KEY: z.string().optional(),
   STREAM_API_SECRET: z.string().optional(),
+  // Stripe SaaS billing
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_PRO: z.string().optional(),
+  STRIPE_PRICE_ENTERPRISE: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

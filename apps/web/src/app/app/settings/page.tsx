@@ -5,13 +5,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2, Percent, Plus, Trash2, Edit2, Check, X,
   Globe, Phone, MapPin, Receipt, Upload, Image as ImageIcon,
+  CreditCard, Zap, Shield, Star, ArrowRight, CalendarClock,
+  AlertTriangle, ExternalLink, Sparkles,
 } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { taxRulesApi, bpsToPercent, percentToBps, type TaxRule } from '@/lib/api/tax-rules';
+import { stripeApi, type SubscriptionStatus, type StripePlan } from '@/lib/api/stripe';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,6 +61,7 @@ type TaxRuleForm = z.infer<typeof TaxRuleSchema>;
 const TABS = [
   { id: 'company', label: 'Company Profile', icon: Building2 },
   { id: 'tax', label: 'Tax Rules', icon: Percent },
+  { id: 'billing', label: 'Billing', icon: CreditCard },
 ];
 
 // ─── Company Profile Tab ──────────────────────────────────────────────────────
@@ -455,10 +460,309 @@ function TaxRuleForm({
   );
 }
 
+// ─── Billing Tab ──────────────────────────────────────────────────────────────
+
+const PLAN_DETAILS: Record<StripePlan, {
+  label: string;
+  price: string;
+  icon: React.ElementType;
+  color: string;
+  badgeClass: string;
+  features: string[];
+}> = {
+  free: {
+    label: 'Free',
+    price: '$0 / month',
+    icon: Zap,
+    color: 'text-muted-foreground',
+    badgeClass: 'bg-muted/20 text-muted-foreground border-border',
+    features: [
+      'Up to 5 invoices / month',
+      '1 team member',
+      'Basic templates',
+      'PDF export',
+    ],
+  },
+  pro: {
+    label: 'Pro',
+    price: '$29 / month',
+    icon: Star,
+    color: 'text-accent',
+    badgeClass: 'bg-accent/10 text-accent border-accent/30',
+    features: [
+      'Unlimited invoices',
+      'Up to 10 team members',
+      'Custom branding & templates',
+      'Payroll & salary slips',
+      'Tax rules engine',
+      'Priority support',
+    ],
+  },
+  enterprise: {
+    label: 'Enterprise',
+    price: '$99 / month',
+    icon: Shield,
+    color: 'text-primary',
+    badgeClass: 'bg-primary/10 text-primary border-primary/30',
+    features: [
+      'Everything in Pro',
+      'Unlimited team members',
+      'Advanced analytics & exports',
+      'AI invoice generation',
+      'Audit logs & RBAC',
+      'Dedicated account manager',
+      'SLA guarantee',
+    ],
+  },
+};
+
+function PlanBadge({ plan }: { plan: StripePlan }) {
+  const details = PLAN_DETAILS[plan];
+  const Icon = details.icon;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${details.badgeClass}`}>
+      <Icon className="h-3 w-3" />
+      {details.label}
+    </span>
+  );
+}
+
+function BillingTab() {
+  const checkoutMutation = useMutation({
+    mutationFn: (plan: 'pro' | 'enterprise') => stripeApi.createCheckoutSession(plan),
+    onSuccess: ({ url }) => {
+      window.location.href = url;
+    },
+    onError: () => toast.error('Failed to start checkout. Please try again.'),
+  });
+
+  const portalMutation = useMutation({
+    mutationFn: () => stripeApi.createPortalSession(),
+    onSuccess: ({ url }) => {
+      window.location.href = url;
+    },
+    onError: () => toast.error('Failed to open billing portal. Please try again.'),
+  });
+
+  const { data: status, isLoading } = useQuery({
+    queryKey: ['stripe', 'status'],
+    queryFn: () => stripeApi.getStatus(),
+    staleTime: 60_000,
+  });
+
+  const currentPlan = status?.plan ?? 'free';
+  const periodEnd = status?.currentPeriodEnd
+    ? new Date(status.currentPeriodEnd).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Current plan status card */}
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold text-foreground">Current Plan</h2>
+            <p className="text-sm text-muted-foreground">
+              Your workspace is on the{' '}
+              <span className="font-medium text-foreground capitalize">{currentPlan}</span> plan.
+            </p>
+          </div>
+          {isLoading ? (
+            <Skeleton className="h-7 w-20 rounded-full" />
+          ) : (
+            <PlanBadge plan={currentPlan} />
+          )}
+        </div>
+
+        {/* Period end / cancel warning */}
+        {!isLoading && status && (
+          <div className="mt-4 space-y-2">
+            {periodEnd && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CalendarClock className="h-4 w-4 shrink-0" />
+                {status.cancelAtPeriodEnd
+                  ? `Plan cancels on ${periodEnd}`
+                  : `Renews on ${periodEnd}`}
+              </div>
+            )}
+            {status.cancelAtPeriodEnd && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"
+              >
+                <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                <p className="text-sm text-warning">
+                  Your subscription is set to cancel at the end of the current period.
+                  Manage your subscription to reactivate it.
+                </p>
+              </motion.div>
+            )}
+          </div>
+        )}
+
+        {/* Manage subscription button (only for paid plans) */}
+        {!isLoading && currentPlan !== 'free' && (
+          <div className="mt-5 pt-5 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => portalMutation.mutate()}
+              loading={portalMutation.isPending}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Manage subscription
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Plan comparison cards */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3">
+          {currentPlan === 'free' ? 'Upgrade your plan' : 'Available plans'}
+        </h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {(['free', 'pro', 'enterprise'] as const).map((plan) => {
+            const details = PLAN_DETAILS[plan];
+            const Icon = details.icon;
+            const isCurrentPlan = plan === currentPlan;
+            const isHigherPlan =
+              (plan === 'pro' && currentPlan === 'free') ||
+              (plan === 'enterprise' && currentPlan !== 'enterprise');
+
+            return (
+              <motion.div
+                key={plan}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: plan === 'free' ? 0 : plan === 'pro' ? 0.05 : 0.1 }}
+                className={[
+                  'relative rounded-xl border p-5 flex flex-col gap-4 transition-shadow',
+                  isCurrentPlan
+                    ? 'border-primary/40 bg-primary/5 shadow-sm'
+                    : 'border-border bg-card hover:shadow-sm',
+                ].join(' ')}
+              >
+                {isCurrentPlan && (
+                  <div className="absolute -top-2.5 left-4">
+                    <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-white">
+                      Current plan
+                    </span>
+                  </div>
+                )}
+                {plan === 'pro' && !isCurrentPlan && (
+                  <div className="absolute -top-2.5 left-4">
+                    <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-white flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      Most popular
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className={`flex items-center gap-2 font-semibold text-foreground`}>
+                      <Icon className={`h-4 w-4 ${details.color}`} />
+                      {details.label}
+                    </div>
+                    <p className="mt-1 text-lg font-bold text-foreground tabular-nums">
+                      {details.price}
+                    </p>
+                  </div>
+                </div>
+
+                <ul className="space-y-1.5 flex-1">
+                  {details.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <Check className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="pt-2">
+                  {isCurrentPlan ? (
+                    <Button variant="outline" size="sm" disabled className="w-full">
+                      <Check className="h-3.5 w-3.5" />
+                      Active
+                    </Button>
+                  ) : plan === 'free' ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-muted-foreground"
+                      onClick={() => portalMutation.mutate()}
+                      loading={portalMutation.isPending}
+                      disabled={currentPlan === 'free'}
+                    >
+                      Downgrade via portal
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      variant={plan === 'enterprise' ? 'default' : 'default'}
+                      onClick={() => checkoutMutation.mutate(plan)}
+                      loading={checkoutMutation.isPending && checkoutMutation.variables === plan}
+                      disabled={checkoutMutation.isPending}
+                    >
+                      {isHigherPlan ? (
+                        <>
+                          Upgrade to {details.label}
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </>
+                      ) : (
+                        <>
+                          Switch to {details.label}
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const [tab, setTab] = React.useState('company');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tabParam = searchParams.get('tab');
+  const successParam = searchParams.get('success');
+
+  const [tab, setTab] = React.useState(
+    TABS.some((t) => t.id === tabParam) ? tabParam! : 'company',
+  );
+
+  // Handle ?tab=billing&success=1 — show success toast and clean URL
+  React.useEffect(() => {
+    if (successParam === '1' && tabParam === 'billing') {
+      toast.success('Subscription activated! Welcome to your new plan.');
+      // Clean the URL without re-triggering the effect
+      const url = new URL(window.location.href);
+      url.searchParams.delete('success');
+      router.replace(url.pathname + '?tab=billing', { scroll: false });
+    }
+  }, [successParam, tabParam, router]);
+
+  function handleTabChange(id: string) {
+    setTab(id);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', id);
+    url.searchParams.delete('success');
+    router.replace(url.pathname + url.search, { scroll: false });
+  }
 
   return (
     <div className="space-y-6">
@@ -470,11 +774,11 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 rounded-xl border border-border bg-surface/30 p-1 w-fit">
+      <div className="flex gap-1 rounded-xl border border-border bg-surface/30 p-1 w-fit flex-wrap">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
-            onClick={() => setTab(id)}
+            onClick={() => handleTabChange(id)}
             className={[
               'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
               tab === id
@@ -488,17 +792,25 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {tab === 'company' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <CompanyProfileTab />
-        </motion.div>
-      )}
+      <AnimatePresence mode="wait">
+        {tab === 'company' && (
+          <motion.div key="company" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <CompanyProfileTab />
+          </motion.div>
+        )}
 
-      {tab === 'tax' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <TaxRulesTab />
-        </motion.div>
-      )}
+        {tab === 'tax' && (
+          <motion.div key="tax" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <TaxRulesTab />
+          </motion.div>
+        )}
+
+        {tab === 'billing' && (
+          <motion.div key="billing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <BillingTab />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

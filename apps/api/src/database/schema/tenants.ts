@@ -18,6 +18,9 @@ export const tenants = pgTable('tenants', {
   invoiceCount: integer('invoice_count').notNull().default(0),
   memberCount: integer('member_count').notNull().default(0),
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
+  // Stripe billing
+  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+  stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
