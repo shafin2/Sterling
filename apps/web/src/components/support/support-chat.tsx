@@ -21,18 +21,26 @@ export function SupportChat() {
   const [myUserId, setMyUserId] = useState<string>('');
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const connect = useCallback(async () => {
     if (connected || connecting) return;
     setConnecting(true);
+    setError(null);
     try {
       const res = await fetch('/api/v1/stream/token', { credentials: 'include' });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setError(res.status === 401 ? 'Please log in to use support chat.' : 'Could not connect to support.');
+        return;
+      }
       const { token, apiKey, userId, channelId } = (await res.json()) as {
         token: string; apiKey: string; userId: string; channelId: string;
       };
-      if (!apiKey || !token) return;
+      if (!apiKey || !token) {
+        setError('Support chat is not configured.');
+        return;
+      }
 
       const { StreamChat } = await import('stream-chat');
       const client = StreamChat.getInstance(apiKey);
@@ -67,6 +75,7 @@ export function SupportChat() {
       setConnected(true);
     } catch (e) {
       console.error('Stream connect failed', e);
+      setError('Connection failed. Please try again.');
     } finally {
       setConnecting(false);
     }
@@ -137,7 +146,18 @@ export function SupportChat() {
                   Connecting…
                 </div>
               )}
-              {!connecting && messages.length === 0 && (
+              {!connecting && error && (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center px-4">
+                  <p className="text-sm text-muted-foreground">{error}</p>
+                  <button
+                    onClick={() => { setError(null); void connect(); }}
+                    className="rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              {!connecting && !error && messages.length === 0 && (
                 <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                     <MessageSquare className="h-5 w-5 text-primary" />

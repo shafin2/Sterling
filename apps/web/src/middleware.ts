@@ -33,8 +33,20 @@ function decodeJwt(token: string): Record<string, unknown> | null {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always allow public paths
-  if (isPublic(pathname)) return NextResponse.next();
+  // Redirect logged-in users away from root and auth pages to the app
+  if (pathname === '/' || isPublic(pathname)) {
+    const token = request.cookies.get('access_token')?.value;
+    if (token) {
+      const payload = decodeJwt(token);
+      if (payload) {
+        const dest = request.nextUrl.clone();
+        dest.pathname = payload['isSuperAdmin'] === true ? '/admin' : '/app';
+        dest.search = '';
+        return NextResponse.redirect(dest);
+      }
+    }
+    return NextResponse.next();
+  }
 
   const isAppRoute = pathname.startsWith('/app');
   const isAdminRoute = pathname.startsWith('/admin');
@@ -87,5 +99,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/app/:path*', '/admin/:path*'],
+  matcher: ['/', '/auth/:path*', '/app/:path*', '/admin/:path*'],
 };

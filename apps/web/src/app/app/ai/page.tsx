@@ -88,34 +88,47 @@ export default function AiPage() {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border pb-4 mb-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-          <Sparkles className="h-5 w-5 text-white" />
+      <div className="flex items-center gap-4 border-b border-border pb-5 mb-6">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/25">
+          <Sparkles className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-foreground">Sterling AI</h1>
-          <p className="text-xs text-muted">Your AI financial advisor — ask anything about your business</p>
+          <h1 className="text-xl font-bold text-foreground">Sterling AI</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Your AI financial advisor — ask anything about your business</p>
         </div>
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={() => { setMessages([]); setInput(''); }}
+            className="ml-auto rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
+          >
+            New chat
+          </button>
+        )}
       </div>
 
       {/* Chat area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto space-y-4 pb-4"
+        className="flex-1 overflow-y-auto space-y-5 pb-6 pr-1"
       >
         {/* Suggested questions — shown when empty */}
         {messages.length === 0 && !chatMutation.isPending && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            className="space-y-6 pt-2"
           >
-            <p className="text-sm text-muted text-center pt-4">
-              Ask me anything about your finances, invoices, payroll, or clients.
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="text-center space-y-2">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 mx-auto">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-lg font-semibold text-foreground">What would you like to know?</p>
+              <p className="text-sm text-muted-foreground">Ask about your finances, invoices, payroll, or clients.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {SUGGESTED_QUESTIONS.map((q, i) => (
                 <motion.button
                   key={q.text}
@@ -123,15 +136,16 @@ export default function AiPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06 }}
+                  whileHover={{ y: -2 }}
                   onClick={() => sendMessage(q.text)}
                   className={cn(
-                    'flex flex-col items-start gap-2 rounded-xl border border-border bg-background p-3 text-left',
-                    'transition-all hover:border-accent hover:bg-surface hover:shadow-sm',
+                    'flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-left',
+                    'transition-all hover:border-accent/50 hover:bg-surface hover:shadow-md',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                   )}
                 >
-                  <span className="text-lg">{q.icon}</span>
-                  <span className="text-xs text-foreground leading-snug">{q.text}</span>
+                  <span className="text-2xl shrink-0 mt-0.5">{q.icon}</span>
+                  <span className="text-sm font-medium text-foreground leading-snug">{q.text}</span>
                 </motion.button>
               ))}
             </div>
@@ -149,16 +163,16 @@ export default function AiPage() {
               className={cn('flex gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}
             >
               {message.role === 'assistant' && (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent mt-0.5">
-                  <Bot className="h-4 w-4 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent mt-0.5 shadow-sm">
+                  <Bot className="h-5 w-5 text-white" />
                 </div>
               )}
-              <div className={cn('max-w-[80%] space-y-2', message.role === 'user' ? 'items-end' : 'items-start')}>
+              <div className={cn('max-w-[78%] space-y-2', message.role === 'user' ? 'items-end' : 'items-start')}>
                 <div
                   className={cn(
-                    'rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
+                    'rounded-2xl px-4 py-3.5 text-sm leading-relaxed whitespace-pre-wrap',
                     message.role === 'user'
-                      ? 'bg-primary text-white rounded-tr-sm'
+                      ? 'bg-gradient-to-br from-primary to-accent text-white rounded-tr-sm shadow-sm'
                       : 'bg-surface border border-border text-foreground rounded-tl-sm',
                   )}
                 >
@@ -166,15 +180,15 @@ export default function AiPage() {
                 </div>
                 {/* Follow-up suggestion chips */}
                 {message.role === 'assistant' && message.followUps && message.followUps.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {message.followUps.map((q) => (
                       <button
                         key={q}
                         type="button"
                         onClick={() => sendMessage(q)}
                         className={cn(
-                          'rounded-full border border-border bg-background px-3 py-1 text-xs text-muted',
-                          'transition-colors hover:border-accent hover:text-accent hover:bg-surface',
+                          'rounded-full border border-accent/30 bg-accent/5 px-3.5 py-1.5 text-xs font-medium text-accent',
+                          'transition-all hover:bg-accent hover:text-white hover:border-accent',
                         )}
                       >
                         {q}
@@ -194,17 +208,17 @@ export default function AiPage() {
             animate={{ opacity: 1, y: 0 }}
             className="flex items-start gap-3"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-              <Bot className="h-4 w-4 text-white" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-sm">
+              <Bot className="h-5 w-5 text-white" />
             </div>
-            <div className="rounded-2xl rounded-tl-sm bg-surface border border-border px-4 py-3">
-              <div className="flex gap-1">
+            <div className="rounded-2xl rounded-tl-sm bg-surface border border-border px-5 py-3.5">
+              <div className="flex gap-1.5 items-center">
                 {[0, 1, 2].map((i) => (
                   <motion.span
                     key={i}
-                    animate={{ opacity: [0.3, 1, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-                    className="h-1.5 w-1.5 rounded-full bg-muted"
+                    animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
+                    transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
+                    className="h-2 w-2 rounded-full bg-accent"
                   />
                 ))}
               </div>
@@ -214,19 +228,19 @@ export default function AiPage() {
       </div>
 
       {/* Input area */}
-      <div className="border-t border-border pt-4">
-        <div className="flex gap-2 items-end">
+      <div className="border-t border-border pt-5">
+        <div className="flex gap-3 items-end">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about your finances… (Enter to send, Shift+Enter for new line)"
+            placeholder="Ask about your finances…"
             rows={2}
             className={cn(
-              'flex-1 resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm',
-              'placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent',
-              'transition-shadow',
+              'flex-1 resize-none rounded-xl border border-border bg-background px-4 py-3.5 text-sm',
+              'placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent',
+              'transition-all leading-relaxed',
             )}
           />
           <button
@@ -234,20 +248,21 @@ export default function AiPage() {
             disabled={!input.trim() || chatMutation.isPending}
             onClick={() => sendMessage(input)}
             className={cn(
-              'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
-              'bg-primary text-white transition-all hover:bg-accent',
-              'disabled:opacity-40 disabled:cursor-not-allowed',
+              'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
+              'bg-gradient-to-br from-primary to-accent text-white shadow-sm',
+              'transition-all hover:shadow-md hover:shadow-primary/30 hover:scale-105',
+              'disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
             )}
           >
             {chatMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-5 w-5" />
             )}
           </button>
         </div>
-        <p className="mt-2 text-[10px] text-muted text-center">
+        <p className="mt-2.5 text-xs text-muted-foreground text-center">
           Sterling AI may make mistakes. Verify important financial decisions independently.
         </p>
       </div>
