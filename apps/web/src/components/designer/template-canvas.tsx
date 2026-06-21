@@ -20,7 +20,8 @@ import { cn } from '@/lib/utils';
 import type { TemplateLayout, TemplateBlock, BlockType } from '@sterling/shared';
 import { BLOCK_LABELS } from '@sterling/shared';
 
-const BLOCK_ICONS: Record<BlockType, React.ElementType> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const BLOCK_ICONS: Record<BlockType, React.ComponentType<any>> = {
   'header': LayoutTemplate,
   'logo': Image,
   'divider': Minus,

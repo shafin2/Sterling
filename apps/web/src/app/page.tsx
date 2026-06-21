@@ -3,6 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { HeroCanvasLoader } from './_marketing/hero-canvas-loader';
+import { TestimonialsSection } from './_marketing/testimonials-section';
 import {
   FileText, Users, Briefcase, BarChart3, Palette, Shield,
   Zap, QrCode, Mail, Clock, TrendingUp, Download,
@@ -310,6 +312,7 @@ function Hero() {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-16 overflow-hidden">
       <HeroOrbs />
+      <HeroCanvasLoader />
 
       <div className="relative z-10 mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
         {/* Left copy */}
@@ -809,6 +812,7 @@ export default function LandingPage() {
       <Hero />
       <FeaturesSection />
       <BonusSection />
+      <TestimonialsSection />
       <HowItWorksSection />
       <PricingSection />
       <CtaBanner />

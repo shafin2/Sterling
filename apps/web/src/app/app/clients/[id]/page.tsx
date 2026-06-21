@@ -201,7 +201,8 @@ function InfoRow({
   value,
   link,
 }: {
-  icon: React.ElementType;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: React.ComponentType<any>;
   label: string;
   value?: string;
   link?: boolean;
@@ -209,7 +210,7 @@ function InfoRow({
   if (!value) return null;
   return (
     <div className="flex items-start gap-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
       <div>
         <p className="text-xs text-muted">{label}</p>
         {link ? (

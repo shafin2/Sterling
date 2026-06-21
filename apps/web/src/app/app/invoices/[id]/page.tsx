@@ -463,7 +463,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 }
 
 function TimelineItem({ icon: Icon, label, date, color, done }: {
-  icon: React.ElementType; label: string; date: string; color: string; done: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: React.ComponentType<any>; label: string; date: string; color: string; done: boolean;
 }) {
   return (
     <div className="flex items-center gap-3">
