@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CreateSalaryStructureSchema, type CreateSalaryStructureDto } from '@sterling/shared';
 import { employeesApi, type SalaryStructure } from '@/lib/api/employees';
 import { Button } from '@/components/ui/button';
+import { Portal } from '@/components/ui/portal';
 import { formatMoney, toMajorUnits, toMinorUnits } from '@sterling/shared';
 
 interface SalaryEditorProps {
@@ -99,7 +100,7 @@ export function SalaryEditor({ open, employeeId, current, onClose }: SalaryEdito
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <Portal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -134,7 +135,7 @@ export function SalaryEditor({ open, employeeId, current, onClose }: SalaryEdito
                   <input
                     type="date"
                     {...register('effectiveDate', { required: true })}
-                    className={inputCls}
+                    className={`${inputCls} w-full`}
                   />
                 </div>
 
@@ -146,7 +147,7 @@ export function SalaryEditor({ open, employeeId, current, onClose }: SalaryEdito
                     min={0}
                     step={0.01}
                     {...register('basicSalary', { valueAsNumber: true })}
-                    className={inputCls}
+                    className={`${inputCls} w-full`}
                     placeholder="50000"
                   />
                 </div>
@@ -172,7 +173,7 @@ export function SalaryEditor({ open, employeeId, current, onClose }: SalaryEdito
                       <input
                         {...register(`allowances.${i}.name`)}
                         placeholder="Allowance name"
-                        className={`${inputCls} flex-1`}
+                        className={`${inputCls} min-w-0 flex-1`}
                       />
                       <input
                         type="number"
@@ -180,7 +181,7 @@ export function SalaryEditor({ open, employeeId, current, onClose }: SalaryEdito
                         step={0.01}
                         {...register(`allowances.${i}.amount`, { valueAsNumber: true })}
                         placeholder="Amount"
-                        className={`${inputCls} w-28`}
+                        className={`${inputCls} w-28 shrink-0`}
                       />
                       <button
                         type="button"
@@ -214,7 +215,7 @@ export function SalaryEditor({ open, employeeId, current, onClose }: SalaryEdito
                       <input
                         {...register(`deductions.${i}.name`)}
                         placeholder="Deduction name"
-                        className={`${inputCls} flex-1`}
+                        className={`${inputCls} min-w-0 flex-1`}
                       />
                       <input
                         type="number"
@@ -222,7 +223,7 @@ export function SalaryEditor({ open, employeeId, current, onClose }: SalaryEdito
                         step={0.01}
                         {...register(`deductions.${i}.amount`, { valueAsNumber: true })}
                         placeholder="Amount"
-                        className={`${inputCls} w-28`}
+                        className={`${inputCls} w-28 shrink-0`}
                       />
                       <button
                         type="button"
@@ -258,7 +259,7 @@ export function SalaryEditor({ open, employeeId, current, onClose }: SalaryEdito
               </div>
             </form>
           </motion.aside>
-        </>
+        </Portal>
       )}
     </AnimatePresence>
   );
@@ -286,4 +287,4 @@ function PreviewRow({
 }
 
 const inputCls =
-  'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors placeholder:text-muted/60';
+  'rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors placeholder:text-muted/60';

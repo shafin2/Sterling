@@ -39,6 +39,8 @@ const EnvSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRICE_PRO: z.string().optional(),
   STRIPE_PRICE_ENTERPRISE: z.string().optional(),
+  // Puppeteer — override Chrome binary for PDF generation (e.g. /usr/bin/google-chrome)
+  PUPPETEER_EXECUTABLE_PATH: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CreateDepartmentSchema, type CreateDepartmentDto } from '@sterling/shared';
 import { departmentsApi, type Department } from '@/lib/api/departments';
 import { Button } from '@/components/ui/button';
+import { Portal } from '@/components/ui/portal';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -160,7 +161,7 @@ function DepartmentDrawer({
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <Portal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -212,7 +213,7 @@ function DepartmentDrawer({
             </form>
           </motion.div>
           </div>
-        </>
+        </Portal>
       )}
     </AnimatePresence>
   );

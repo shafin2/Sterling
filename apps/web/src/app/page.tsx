@@ -4,8 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { GuestSupportChat } from '@/components/support/guest-support-chat';
 import { motion, useScroll, useTransform, AnimatePresence, useInView } from 'framer-motion';
-import { HeroCanvasLoader } from './_marketing/hero-canvas-loader';
 import { TestimonialsSection } from './_marketing/testimonials-section';
+import { MarketingCursor } from './_marketing/cursor';
 import {
   FileText, Users, Briefcase, BarChart3, Palette, Shield,
   Zap, QrCode, Mail, Clock, TrendingUp, Download,
@@ -162,33 +162,53 @@ function Navbar() {
 // ─── Orb background ───────────────────────────────────────────────────────────
 
 function HeroOrbs() {
+  // Radial mask so the grid + aurora fade gracefully toward the edges.
+  const fadeMask =
+    'radial-gradient(ellipse 80% 60% at 50% 35%, #000 0%, transparent 78%)';
+
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Aurora wash — soft metallic sweep behind the dashboard mock */}
       <motion.div
-        animate={{ scale: [1, 1.08, 1], opacity: [0.15, 0.25, 0.15] }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute -top-40 -right-40 h-[700px] w-[700px] rounded-full"
-        style={{ background: 'radial-gradient(circle, #7091E6 0%, transparent 70%)' }}
-      />
-      <motion.div
-        animate={{ scale: [1, 1.12, 1], opacity: [0.08, 0.16, 0.08] }}
-        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-        className="absolute -bottom-40 -left-40 h-[600px] w-[600px] rounded-full"
-        style={{ background: 'radial-gradient(circle, #3D52A0 0%, transparent 70%)' }}
-      />
-      <motion.div
-        animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
-        transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut', delay: 5 }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[900px] rounded-full"
-        style={{ background: 'radial-gradient(ellipse, #8697C4 0%, transparent 70%)' }}
-      />
-      <div
-        className="absolute inset-0 opacity-[0.025] dark:opacity-[0.05]"
+        animate={{ opacity: [0.45, 0.7, 0.45], scale: [1, 1.06, 1] }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute -top-1/4 right-[-10%] h-[820px] w-[820px] rounded-full blur-3xl"
         style={{
-          backgroundImage: 'linear-gradient(rgba(61,82,160,1) 1px, transparent 1px), linear-gradient(90deg, rgba(61,82,160,1) 1px, transparent 1px)',
-          backgroundSize: '64px 64px',
+          background:
+            'radial-gradient(circle at 50% 50%, rgba(112,145,230,0.30), rgba(61,82,160,0.12) 45%, transparent 72%)',
         }}
       />
+      <motion.div
+        animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.1, 1] }}
+        transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
+        className="absolute bottom-[-30%] left-[-12%] h-[680px] w-[680px] rounded-full blur-3xl"
+        style={{
+          background:
+            'radial-gradient(circle at 50% 50%, rgba(61,82,160,0.26), rgba(134,151,196,0.10) 50%, transparent 74%)',
+        }}
+      />
+
+      {/* Fine grid, masked to fade at the edges */}
+      <div
+        className="absolute inset-0 opacity-[0.5] dark:opacity-[0.35]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(61,82,160,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(61,82,160,0.10) 1px, transparent 1px)',
+          backgroundSize: '56px 56px',
+          WebkitMaskImage: fadeMask,
+          maskImage: fadeMask,
+        }}
+      />
+
+      {/* Top spotlight + bottom fade into the page */}
+      <div
+        className="absolute inset-x-0 top-0 h-[420px]"
+        style={{
+          background:
+            'radial-gradient(ellipse 60% 100% at 50% 0%, rgba(112,145,230,0.10), transparent 70%)',
+        }}
+      />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-background" />
     </div>
   );
 }
@@ -364,7 +384,6 @@ function Hero() {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-28 pb-20 overflow-hidden">
       <HeroOrbs />
-      <HeroCanvasLoader />
 
       <motion.div style={{ y, opacity }} className="relative z-10 mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
         {/* Copy */}
@@ -1129,6 +1148,7 @@ function Footer() {
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
+      <MarketingCursor />
       <Navbar />
       <Hero />
       <TrustBar />

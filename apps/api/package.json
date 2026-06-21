@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "migrate": "node scripts/migrate.mjs",
     "migrate:generate": "drizzle-kit generate",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seed.ts"
+    "seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
+    "seed:demo": "ts-node -r tsconfig-paths/register src/database/seed-demo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

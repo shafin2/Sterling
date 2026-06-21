@@ -11,6 +11,7 @@ import { CreateEmployeeSchema, type CreateEmployeeDto } from '@sterling/shared';
 import { employeesApi, type Employee } from '@/lib/api/employees';
 import { type Department } from '@/lib/api/departments';
 import { Button } from '@/components/ui/button';
+import { Portal } from '@/components/ui/portal';
 
 interface EmployeeDrawerProps {
   open: boolean;
@@ -65,7 +66,7 @@ export function EmployeeDrawer({ open, employee, departments, onClose }: Employe
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <Portal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -154,7 +155,7 @@ export function EmployeeDrawer({ open, employee, departments, onClose }: Employe
               </div>
             </form>
           </motion.aside>
-        </>
+        </Portal>
       )}
     </AnimatePresence>
   );

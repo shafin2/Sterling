@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clientsApi } from '@/lib/api/clients';
 import { Button } from '@/components/ui/button';
+import { Portal } from '@/components/ui/portal';
 import type { CreateClientDto } from '@sterling/shared';
 
 interface ClientCsvImportProps {
@@ -74,7 +75,7 @@ export function ClientCsvImport({ open, onClose }: ClientCsvImportProps) {
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <Portal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -147,7 +148,7 @@ export function ClientCsvImport({ open, onClose }: ClientCsvImportProps) {
             </div>
           </motion.div>
           </div>
-        </>
+        </Portal>
       )}
     </AnimatePresence>
   );

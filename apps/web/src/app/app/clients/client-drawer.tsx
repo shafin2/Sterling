@@ -11,6 +11,7 @@ import { CreateClientSchema, type CreateClientDto } from '@sterling/shared';
 import { clientsApi, type Client } from '@/lib/api/clients';
 import { Button } from '@/components/ui/button';
 import { AiAssistButton } from '@/components/ui/ai-assist-button';
+import { Portal } from '@/components/ui/portal';
 
 interface ClientDrawerProps {
   open: boolean;
@@ -78,7 +79,7 @@ export function ClientDrawer({ open, client, onClose }: ClientDrawerProps) {
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <Portal>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -238,7 +239,7 @@ export function ClientDrawer({ open, client, onClose }: ClientDrawerProps) {
               </div>
             </form>
           </motion.aside>
-        </>
+        </Portal>
       )}
     </AnimatePresence>
   );

@@ -11,6 +11,7 @@ import { RecordPaymentSchema, type RecordPaymentDto, formatMoney, toMinorUnits, 
 import { invoicesApi, type Invoice } from '@/lib/api/invoices';
 import { Button } from '@/components/ui/button';
 import { MoneyText } from '@/components/ui/money-text';
+import { Portal } from '@/components/ui/portal';
 
 interface PaymentRecorderProps {
   open: boolean;
@@ -60,7 +61,7 @@ export function PaymentRecorder({ open, invoice, onClose }: PaymentRecorderProps
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <Portal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -149,7 +150,7 @@ export function PaymentRecorder({ open, invoice, onClose }: PaymentRecorderProps
             </form>
           </div>
           </motion.div>
-        </>
+        </Portal>
       )}
     </AnimatePresence>
   );

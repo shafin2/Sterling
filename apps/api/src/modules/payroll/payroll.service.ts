@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ConflictException,
@@ -9,10 +10,10 @@ import type { Queue } from 'bullmq';
 import { InjectDrizzle } from '../../database/drizzle.decorator';
 import type { DrizzleDb } from '../../database/drizzle.types';
 import {
-  payrollRuns, payslips, employees, salaryStructures, departments,
+  payrollRuns, payslips, employees, salaryStructures, departments, tenants,
 } from '../../database/schema';
 import { and, eq, desc, count, sql } from 'drizzle-orm';
-import { QUEUE_PAYROLL, QUEUE_PDF } from '../queues/queues.module';
+import { QUEUE_PAYROLL, QUEUE_PDF, QUEUE_EMAIL } from '../queues/queues.module';
 import { StorageService } from '../storage/storage.service';
 import type {
   CreatePayrollRunDto,
@@ -74,10 +75,13 @@ function computePayslip(input: ComputeInput): ComputeResult {
 
 @Injectable()
 export class PayrollService {
+  private readonly logger = new Logger(PayrollService.name);
+
   constructor(
     @InjectDrizzle() private readonly db: DrizzleDb,
     @InjectQueue(QUEUE_PAYROLL) private readonly payrollQueue: Queue,
     @InjectQueue(QUEUE_PDF) private readonly pdfQueue: Queue,
+    @InjectQueue(QUEUE_EMAIL) private readonly emailQueue: Queue,
     private readonly storage: StorageService,
   ) {}
 
@@ -380,6 +384,66 @@ export class PayrollService {
       .update(payrollRuns)
       .set({ status: 'completed', processedAt: new Date(), updatedAt: new Date() } as any)
       .where(eq(payrollRuns.id, runId));
+
+    // Email each employee their salary slip now that the run is processed.
+    await this.sendPayslipEmails(runId, tenantId);
+  }
+
+  // ─── Email salary slips to employees ─────────────────────────
+  private async sendPayslipEmails(runId: string, tenantId: string) {
+    const [run] = await this.db
+      .select()
+      .from(payrollRuns)
+      .where(and(eq(payrollRuns.id, runId), eq(payrollRuns.tenantId, tenantId)))
+      .limit(1);
+    if (!run) return;
+
+    const [tenant] = await this.db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    const currency = tenant?.currency ?? 'PKR';
+    const company = tenant?.name ?? 'Sterling';
+    const periodLabel = `${MONTH_NAMES[run.periodMonth - 1] ?? run.periodMonth} ${run.periodYear}`;
+
+    const rows = await this.db
+      .select({ slip: payslips, employee: employees })
+      .from(payslips)
+      .leftJoin(employees, eq(payslips.employeeId, employees.id))
+      .where(and(eq(payslips.payrollRunId, runId), eq(payslips.tenantId, tenantId)));
+
+    let sent = 0;
+    for (const { slip, employee } of rows) {
+      if (!employee?.email) continue;
+      const name = `${employee.firstName} ${employee.lastName}`.trim();
+      try {
+        await this.emailQueue.add('payslip', {
+          to: employee.email,
+          subject: `Your salary slip — ${periodLabel}`,
+          html: buildPayslipEmailHtml({
+            name,
+            company,
+            currency,
+            periodLabel,
+            basicSalary: slip.basicSalary,
+            allowances: (slip.allowances as SalaryComponent[]) ?? [],
+            deductions: (slip.deductions as SalaryComponent[]) ?? [],
+            bonusAmount: slip.bonusAmount,
+            unpaidLeaveDeduction: slip.unpaidLeaveDeduction,
+            grossSalary: slip.grossSalary,
+            totalDeductions: slip.totalDeductions,
+            netSalary: slip.netSalary,
+          }),
+          tenantId,
+        });
+        sent += 1;
+      } catch (err) {
+        this.logger.error(`Failed to queue payslip email for ${employee.email}`, err as Error);
+      }
+    }
+    this.logger.log(`Queued ${sent} payslip email(s) for run ${runId} (${periodLabel})`);
   }
 
   // ─── Private helpers ─────────────────────────────────────────
@@ -415,4 +479,93 @@ export class PayrollService {
       } as any)
       .where(eq(payrollRuns.id, runId));
   }
+}
+
+// ─── Salary slip email template ───────────────────────────────────────────────
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** Format integer minor units (paisa/cents) as a currency string. */
+function fmtMoney(minor: number, currency: string): string {
+  const major = (minor ?? 0) / 100;
+  return `${currency} ${major.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+interface PayslipEmailData {
+  name: string;
+  company: string;
+  currency: string;
+  periodLabel: string;
+  basicSalary: number;
+  allowances: SalaryComponent[];
+  deductions: SalaryComponent[];
+  bonusAmount: number;
+  unpaidLeaveDeduction: number;
+  grossSalary: number;
+  totalDeductions: number;
+  netSalary: number;
+}
+
+function buildPayslipEmailHtml(d: PayslipEmailData): string {
+  const line = (label: string, amount: number, color = '#1f2937') =>
+    `<tr>
+      <td style="padding:6px 0;color:#6b7280;font-size:14px">${label}</td>
+      <td style="padding:6px 0;color:${color};font-size:14px;text-align:right;font-variant-numeric:tabular-nums">${fmtMoney(amount, d.currency)}</td>
+    </tr>`;
+
+  const allowanceLines = d.allowances.length
+    ? d.allowances.map((a) => line(`&nbsp;&nbsp;${a.name}`, a.amount, '#2E9E7B')).join('')
+    : '';
+  const deductionLines = d.deductions.length
+    ? d.deductions.map((x) => line(`&nbsp;&nbsp;${x.name}`, -x.amount, '#C9485B')).join('')
+    : '';
+  const bonusLine = d.bonusAmount ? line('Bonus', d.bonusAmount, '#2E9E7B') : '';
+  const leaveLine = d.unpaidLeaveDeduction
+    ? line('Unpaid leave', -d.unpaidLeaveDeduction, '#C9485B')
+    : '';
+
+  return `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;background:#ffffff">
+  <div style="background:#3D52A0;padding:24px 28px;border-radius:12px 12px 0 0">
+    <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700">${d.company}</p>
+    <p style="margin:4px 0 0;color:#cdd6f4;font-size:13px">Salary Slip · ${d.periodLabel}</p>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:28px">
+    <p style="margin:0 0 4px;font-size:15px;color:#1f2937">Hi ${d.name},</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6">
+      Your salary for <strong>${d.periodLabel}</strong> has been processed. Here is your salary slip.
+    </p>
+
+    <table style="width:100%;border-collapse:collapse">
+      ${line('Basic salary', d.basicSalary)}
+      ${allowanceLines}
+      ${bonusLine}
+      <tr><td colspan="2" style="border-top:1px solid #e5e7eb;padding-top:8px"></td></tr>
+      ${line('Gross salary', d.grossSalary, '#1f2937')}
+      ${deductionLines}
+      ${leaveLine}
+      <tr><td colspan="2" style="border-top:1px solid #e5e7eb;padding-top:8px"></td></tr>
+      ${line('Total deductions', -d.totalDeductions, '#C9485B')}
+    </table>
+
+    <div style="margin-top:20px;background:#EDE8F5;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between">
+      <table style="width:100%;border-collapse:collapse">
+        <tr>
+          <td style="font-size:15px;font-weight:700;color:#3D52A0">Net Pay</td>
+          <td style="font-size:18px;font-weight:800;color:#3D52A0;text-align:right;font-variant-numeric:tabular-nums">${fmtMoney(d.netSalary, d.currency)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;line-height:1.6">
+      This is an automated salary slip from ${d.company}, generated by Sterling.
+      If anything looks incorrect, please contact your HR department.
+    </p>
+  </div>
+</div>`;
 }
