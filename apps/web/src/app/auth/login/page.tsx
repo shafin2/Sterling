@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
@@ -15,7 +15,16 @@ import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPwd, setShowPwd] = useState(false);
+  const [navigating, setNavigating] = useState(false);
+
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err === 'oauth_failed') {
+      toast.error('Google sign-in failed. Please try email & password instead.');
+    }
+  }, [searchParams]);
 
   const {
     register,
@@ -26,6 +35,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginDto) => {
     try {
       const res = await api.post('auth/login', { json: data }).json<{ isSuperAdmin?: boolean }>();
+      setNavigating(true);
       toast.success('Welcome back!');
       router.push(res?.isSuperAdmin ? '/admin' : '/app');
     } catch {
@@ -131,9 +141,9 @@ export default function LoginPage() {
             )}
           </div>
 
-          <Button type="submit" className="w-full" size="lg" loading={isSubmitting}>
+          <Button type="submit" className="w-full" size="lg" loading={isSubmitting || navigating}>
             <LogIn className="h-4 w-4" />
-            Sign in
+            {navigating ? 'Redirecting…' : 'Sign in'}
           </Button>
         </form>
 

@@ -113,12 +113,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     });
   }, []);
 
-  // Group open state — auto-open if child is active
+  // Group open state — all open by default, collapse only when user explicitly closes
   const initialOpen: Record<string, boolean> = {};
   NAV.forEach((item) => {
-    if (item.type === 'group') {
-      initialOpen[item.label] = item.children.some((c) => pathname.startsWith(c.href));
-    }
+    if (item.type === 'group') initialOpen[item.label] = true;
   });
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(initialOpen);
 
@@ -144,50 +142,60 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       aria-label="Main navigation"
     >
       {/* ── Tenant header ── */}
-      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-primary">
-          {me?.tenant?.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={me.tenant.logo} alt={tenantName} className="h-full w-full rounded-lg object-cover" />
-          ) : (
-            <span className="text-xs font-bold text-white">{tenantInitials}</span>
-          )}
+      {collapsed ? (
+        /* Icon-only header: stack logo + expand button */
+        <div className="flex h-16 shrink-0 flex-col items-center justify-center gap-1 border-b border-white/10 py-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
+            {me?.tenant?.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={me.tenant.logo} alt={tenantName} className="h-full w-full rounded-lg object-cover" />
+            ) : (
+              <span className="text-[10px] font-bold text-white">{tenantInitials}</span>
+            )}
+          </div>
+          <button
+            onClick={toggleCollapse}
+            className="hidden h-5 w-5 items-center justify-center rounded text-white/40 transition-colors hover:text-white lg:flex"
+            aria-label="Expand sidebar"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
-
-        <AnimatePresence initial={false}>
-          {!collapsed && (
-            <motion.div
-              key="tenant-text"
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 'auto' }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.15 }}
-              className="min-w-0 flex-1 overflow-hidden"
-            >
-              <p className="truncate text-sm font-semibold leading-tight text-white">{tenantName}</p>
-              {me?.role && (
-                <p className="truncate text-[10px] capitalize text-white/50">{me.role}</p>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Mobile close / Desktop collapse toggle */}
-        <button
-          onClick={onClose}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
-          aria-label="Close navigation"
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <button
-          onClick={toggleCollapse}
-          className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/10 hover:text-white lg:flex"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-      </div>
+      ) : (
+        /* Expanded header: logo + name + collapse button */
+        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-primary">
+            {me?.tenant?.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={me.tenant.logo} alt={tenantName} className="h-full w-full rounded-lg object-cover" />
+            ) : (
+              <span className="text-xs font-bold text-white">{tenantInitials}</span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <p className="truncate text-sm font-semibold leading-tight text-white">{tenantName}</p>
+            {me?.role && (
+              <p className="truncate text-[10px] capitalize text-white/50">{me.role}</p>
+            )}
+          </div>
+          {/* Mobile close */}
+          <button
+            onClick={onClose}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+            aria-label="Close navigation"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          {/* Desktop collapse */}
+          <button
+            onClick={toggleCollapse}
+            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/10 hover:text-white lg:flex"
+            aria-label="Collapse sidebar"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* ── Main nav ── */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-3">

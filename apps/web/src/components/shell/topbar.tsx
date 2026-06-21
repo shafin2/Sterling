@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, ChevronDown, Search, Moon, Sun, Monitor, LogOut, User, Menu, CheckCircle, AlertTriangle, Clock, ArrowRight, X } from 'lucide-react';
+import { Bell, ChevronDown, Search, Moon, Sun, LogOut, User, Menu, CheckCircle, AlertTriangle, Clock, ArrowRight, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -32,7 +32,7 @@ function relativeDate(dateStr: string) {
 }
 
 export function Topbar({ onMenuClick }: TopbarProps) {
-  const { theme, setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -75,12 +75,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const cycleTheme = () => {
-    const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light';
-    setTheme(next);
-  };
-
-  const ThemeIcon = !mounted ? Monitor : theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
+  const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  const ThemeIcon = !mounted ? Sun : resolvedTheme === 'dark' ? Moon : Sun;
 
   const initials = me
     ? `${me.firstName[0] ?? ''}${me.lastName[0] ?? ''}`.toUpperCase()
@@ -141,7 +137,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           {/* Theme toggle */}
           <button
-            onClick={cycleTheme}
+            onClick={toggleTheme}
             className={cn(
               'flex h-9 w-9 items-center justify-center rounded-lg',
               'text-muted-foreground hover:bg-surface hover:text-foreground',
