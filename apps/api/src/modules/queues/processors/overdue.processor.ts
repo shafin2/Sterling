@@ -4,8 +4,17 @@ import type { Job, Queue } from 'bullmq';
 import { QUEUE_REMINDERS, QUEUE_EMAIL } from '../queues.module';
 import { InjectDrizzle } from '../../../database/drizzle.decorator';
 import type { DrizzleDb } from '../../../database/drizzle.types';
-import { invoices, clients, auditLogs } from '../../../database/schema';
-import { and, eq, sql, gte, lte, isNull } from 'drizzle-orm';
+import { invoices, clients } from '../../../database/schema';
+import { and, eq, sql, isNull, or, lt } from 'drizzle-orm';
+import {
+  invoiceReminderHtml,
+  invoiceReminderText,
+  type ReminderType,
+} from '../../auth/email-templates';
+import { formatMoney } from '@sterling/shared';
+
+// Gap between reminder sends for the same invoice — 24 hours minus a small buffer
+const REMINDER_COOLDOWN_HOURS = 23;
 
 @Injectable()
 @Processor(QUEUE_REMINDERS)
@@ -26,81 +35,122 @@ export class OverdueProcessor extends WorkerHost {
     }
   }
 
+  // ── 1. Flip overdue status ─────────────────────────────────────────────────
   private async markOverdue(): Promise<void> {
     const today = new Date().toISOString().split('T')[0]!;
-    await this.db
+    const result = await this.db
       .update(invoices)
-      .set({ status: 'overdue', updatedAt: new Date() } as any)
-      .where(and(eq(invoices.status, 'sent'), sql`${invoices.dueDate} < ${today}`));
-    this.logger.log(`Overdue cron ran — today: ${today}`);
+      .set({ status: 'overdue', updatedAt: new Date() } as never)
+      .where(and(eq(invoices.status, 'sent'), sql`${invoices.dueDate} < ${today}`))
+      .returning({ id: invoices.id });
+    this.logger.log(`Overdue cron ran — ${result.length} invoice(s) marked overdue (today: ${today})`);
   }
 
+  // ── 2. Send payment reminders (pre-due 3d, due-today, overdue-notice) ──────
   private async sendReminders(): Promise<void> {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]!;
-
-    // 3-day pre-due reminder
-    const threeDaysOut = new Date(today);
-    threeDaysOut.setDate(today.getDate() + 3);
-    const threeDaysOutStr = threeDaysOut.toISOString().split('T')[0]!;
-
-    // 7-day overdue reminder
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 7);
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0]!;
-
-    // Pre-due: due in exactly 3 days, still 'sent'
-    const preDueInvoices = await this.db
-      .select({ invoice: invoices, client: clients })
-      .from(invoices)
-      .leftJoin(clients, eq(invoices.clientId, clients.id))
-      .where(
-        and(
-          eq(invoices.status, 'sent'),
-          sql`${invoices.dueDate} = ${threeDaysOutStr}`,
-        ),
-      );
-
-    // Overdue: became overdue exactly 7 days ago (status=overdue, dueDate=7 days ago)
-    const overdueInvoices = await this.db
-      .select({ invoice: invoices, client: clients })
-      .from(invoices)
-      .leftJoin(clients, eq(invoices.clientId, clients.id))
-      .where(
-        and(
-          eq(invoices.status, 'overdue'),
-          sql`${invoices.dueDate} = ${sevenDaysAgoStr}`,
-        ),
-      );
-
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0]!;
     const appUrl = process.env['APP_URL'] ?? 'http://localhost:3000';
 
-    for (const { invoice, client } of preDueInvoices) {
-      if (!client?.email) continue;
-      const shareUrl = `${appUrl}/invoice/${invoice.shareToken}`;
-      await this.emailQueue.add('send', {
-        to: client.email,
-        subject: `Reminder: Invoice ${invoice.number} is due in 3 days`,
-        html: `<p>Hi ${client.name},</p>
-<p>This is a friendly reminder that invoice <strong>${invoice.number}</strong> is due on <strong>${invoice.dueDate}</strong>.</p>
-<p><a href="${shareUrl}" style="background:#3D52A0;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">View Invoice</a></p>
-<p>Thank you for your business.</p>`,
-      });
-      this.logger.log(`Sent pre-due reminder for invoice ${invoice.number} to ${client.email}`);
-    }
+    // Cooldown threshold — skip if lastRemindedAt is within the past 23 hours
+    const cooldownThreshold = new Date(now.getTime() - REMINDER_COOLDOWN_HOURS * 60 * 60 * 1000);
 
-    for (const { invoice, client } of overdueInvoices) {
+    // Helper: determine if an invoice is eligible for a reminder (not reminded recently)
+    const notRecentlyReminded = or(
+      isNull(invoices.lastRemindedAt),
+      lt(invoices.lastRemindedAt, cooldownThreshold),
+    );
+
+    // Pre-due: due in exactly 3 days, status=sent
+    const threeDaysOut = new Date(now);
+    threeDaysOut.setDate(now.getDate() + 3);
+    const threeDaysOutStr = threeDaysOut.toISOString().split('T')[0]!;
+
+    const preDueRows = await this.db
+      .select({ invoice: invoices, client: clients })
+      .from(invoices)
+      .leftJoin(clients, eq(invoices.clientId, clients.id))
+      .where(and(
+        eq(invoices.status, 'sent'),
+        sql`${invoices.dueDate} = ${threeDaysOutStr}`,
+        notRecentlyReminded,
+      ));
+
+    // Due-today: due date = today, status=sent
+    const dueTodayRows = await this.db
+      .select({ invoice: invoices, client: clients })
+      .from(invoices)
+      .leftJoin(clients, eq(invoices.clientId, clients.id))
+      .where(and(
+        eq(invoices.status, 'sent'),
+        sql`${invoices.dueDate} = ${todayStr}`,
+        notRecentlyReminded,
+      ));
+
+    // Overdue-notice: status=overdue, not recently reminded
+    const overdueRows = await this.db
+      .select({ invoice: invoices, client: clients })
+      .from(invoices)
+      .leftJoin(clients, eq(invoices.clientId, clients.id))
+      .where(and(
+        eq(invoices.status, 'overdue'),
+        notRecentlyReminded,
+      ));
+
+    await this.dispatchReminders(preDueRows, 'pre-due', appUrl);
+    await this.dispatchReminders(dueTodayRows, 'due-today', appUrl);
+    await this.dispatchReminders(overdueRows, 'overdue-notice', appUrl);
+  }
+
+  // ── Helper: send emails and update lastRemindedAt ──────────────────────────
+  private async dispatchReminders(
+    rows: { invoice: typeof invoices.$inferSelect; client: typeof clients.$inferSelect | null }[],
+    type: ReminderType,
+    appUrl: string,
+  ): Promise<void> {
+    for (const { invoice, client } of rows) {
       if (!client?.email) continue;
+
       const shareUrl = `${appUrl}/invoice/${invoice.shareToken}`;
+      const amount = formatMoney(invoice.total, invoice.currency);
+      const dueDate = new Date(invoice.dueDate).toLocaleDateString('en-PK', {
+        day: 'numeric', month: 'long', year: 'numeric',
+      });
+
+      const subject = `${type === 'pre-due' ? `Reminder: Invoice ${invoice.number} due in 3 days` : type === 'due-today' ? `Invoice ${invoice.number} is due today` : `Overdue: Invoice ${invoice.number} requires payment`}`;
+
       await this.emailQueue.add('send', {
         to: client.email,
-        subject: `Overdue: Invoice ${invoice.number} is 7 days past due`,
-        html: `<p>Hi ${client.name},</p>
-<p>Invoice <strong>${invoice.number}</strong> was due on <strong>${invoice.dueDate}</strong> and remains unpaid.</p>
-<p>Please arrange payment at your earliest convenience.</p>
-<p><a href="${shareUrl}" style="background:#C9485B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">View & Pay Invoice</a></p>`,
+        subject,
+        html: invoiceReminderHtml(
+          type,
+          client.name,
+          invoice.number,
+          amount,
+          dueDate,
+          shareUrl,
+          'Your Company', // tenant name — fetched from context in a real multi-tenant call
+        ),
+        text: invoiceReminderText(
+          type,
+          client.name,
+          invoice.number,
+          amount,
+          dueDate,
+          shareUrl,
+          'Your Company',
+        ),
       });
-      this.logger.log(`Sent overdue reminder for invoice ${invoice.number} to ${client.email}`);
+
+      // Stamp lastRemindedAt to prevent duplicate sends within the cooldown window
+      await this.db
+        .update(invoices)
+        .set({ lastRemindedAt: new Date(), updatedAt: new Date() } as never)
+        .where(eq(invoices.id, invoice.id));
+
+      this.logger.log(
+        `[${type}] Reminder queued for invoice ${invoice.number} → ${client.email}`,
+      );
     }
   }
 }
