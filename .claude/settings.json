@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(cat apps/web/next.config.ts)",
+      "Bash(cat apps/web/next.config.js)",
+      "Bash(xargs grep -l \"playwright\\\\|vitest\")",
+      "Bash(xargs -I {} basename {})",
+      "Bash(xargs grep -l \"error.tsx\\\\|not-found\\\\|global-error\")"
+    ]
+  }
+}

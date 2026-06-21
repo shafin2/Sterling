@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Metallic Chic — Light mode ────────────────────────────── */
+    --primary: 225 45% 43%;
+    --primary-foreground: 0 0% 100%;
+
+    --accent: 224 70% 67%;
+    --accent-foreground: 0 0% 100%;
+
+    --muted: 220 30% 65%;
+    --muted-foreground: 220 25% 40%;
+
+    --border: 220 30% 77%;
+    --surface: 270 30% 94%;
+
+    --background: 270 30% 96%;
+    --foreground: 225 40% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 225 40% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 40% 15%;
+
+    --input: 220 30% 77%;
+    --ring: 224 70% 67%;
+    --radius: 0.5rem;
+
+    /* Status */
+    --success: 161 55% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 33 60% 57%;
+    --warning-foreground: 0 0% 100%;
+    --danger: 350 56% 54%;
+    --danger-foreground: 0 0% 100%;
+
+    /* Sidebar */
+    --sidebar: 225 45% 25%;
+    --sidebar-foreground: 220 30% 90%;
+    --sidebar-active: 224 70% 67%;
+    --sidebar-hover: 225 45% 32%;
+  }
+
+  .dark {
+    /* ── Metallic Chic — Dark mode (navy-slate tinted toward primary) */
+    --primary: 224 60% 65%;
+    --primary-foreground: 225 45% 15%;
+
+    --accent: 224 70% 70%;
+    --accent-foreground: 225 45% 10%;
+
+    --muted: 220 20% 55%;
+    --muted-foreground: 220 15% 70%;
+
+    --border: 220 25% 25%;
+    --surface: 225 35% 12%;
+
+    --background: 225 40% 9%;
+    --foreground: 220 30% 92%;
+
+    --card: 225 35% 12%;
+    --card-foreground: 220 30% 92%;
+
+    --popover: 225 35% 14%;
+    --popover-foreground: 220 30% 92%;
+
+    --input: 220 25% 22%;
+    --ring: 224 70% 70%;
+
+    /* Status */
+    --success: 161 55% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 33 60% 55%;
+    --warning-foreground: 0 0% 100%;
+    --danger: 350 56% 60%;
+    --danger-foreground: 0 0% 100%;
+
+    /* Sidebar */
+    --sidebar: 225 45% 11%;
+    --sidebar-foreground: 220 20% 75%;
+    --sidebar-active: 224 70% 65%;
+    --sidebar-hover: 225 35% 18%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Tabular numbers for all monetary values */
+  .tabular-nums,
+  [data-money] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted;
+  }
+}
+
+@layer utilities {
+  /* Glass morphism — only for nav, modals, overlays */
+  .glass {
+    @apply backdrop-blur-md bg-white/60 dark:bg-white/5 border border-white/20 dark:border-white/10;
+  }
+
+  .glass-sidebar {
+    backdrop-filter: blur(12px);
+    background: hsl(var(--sidebar) / 0.95);
+    border-right: 1px solid hsl(var(--border) / 0.3);
+  }
+
+  /* Shimmer skeleton animation */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--border) / 0.5) 25%,
+      hsl(var(--border) / 0.8) 50%,
+      hsl(var(--border) / 0.5) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Focus ring — WCAG AA */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@sterling/config",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    "./tsconfig/base": "./tsconfig.base.json",
+    "./tsconfig/nextjs": "./tsconfig.nextjs.json",
+    "./tsconfig/nestjs": "./tsconfig.nestjs.json",
+    "./eslint/base": "./eslint-base.js",
+    "./eslint/nextjs": "./eslint-nextjs.js",
+    "./eslint/nestjs": "./eslint-nestjs.js",
+    "./tailwind": "./tailwind-preset.js"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0"
+  }
+}
