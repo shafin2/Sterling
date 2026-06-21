@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,11 +10,12 @@ import { motion } from 'framer-motion';
 import {
   Building2, Percent, Plus, Trash2, Edit2, Check, X,
   Globe, Phone, MapPin, Receipt, Upload, Image as ImageIcon,
-  Users, Mail,
+  Users, Mail, CreditCard, Zap, Crown, CheckCircle2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { taxRulesApi, bpsToPercent, percentToBps, type TaxRule } from '@/lib/api/tax-rules';
 import { teamsApi, type Role } from '@/lib/api/teams';
+import { stripeApi, type SubscriptionStatus } from '@/lib/api/stripe';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +63,7 @@ const TABS = [
   { id: 'company', label: 'Company Profile', icon: Building2 },
   { id: 'tax', label: 'Tax Rules', icon: Percent },
   { id: 'team', label: 'Team', icon: Users },
+  { id: 'billing', label: 'Billing', icon: CreditCard },
 ];
 
 // ─── Company Profile Tab ──────────────────────────────────────────────────────
@@ -838,10 +841,172 @@ function TeamTab() {
   );
 }
 
+// ─── Billing Tab ──────────────────────────────────────────────────────────────
+
+const PLANS = [
+  {
+    id: 'free' as const,
+    name: 'Free',
+    price: '$0',
+    icon: Zap,
+    color: 'text-muted-foreground',
+    features: ['5 invoices/month', '1 user', 'Basic templates', 'Email support'],
+  },
+  {
+    id: 'pro' as const,
+    name: 'Pro',
+    price: '$29',
+    icon: Crown,
+    color: 'text-accent',
+    features: ['Unlimited invoices', '5 users', 'Custom designer', 'AI assistant', 'Priority support'],
+  },
+  {
+    id: 'enterprise' as const,
+    name: 'Enterprise',
+    price: '$79',
+    icon: Crown,
+    color: 'text-primary',
+    features: ['Everything in Pro', 'Unlimited users', 'Advanced analytics', 'SLA', 'Dedicated support'],
+  },
+];
+
+function BillingTab() {
+  const [loading, setLoading] = React.useState<string | null>(null);
+
+  const { data: status, isLoading } = useQuery<SubscriptionStatus>({
+    queryKey: ['stripe', 'status'],
+    queryFn: () => stripeApi.getStatus(),
+    retry: false,
+  });
+
+  async function handleUpgrade(plan: 'pro' | 'enterprise') {
+    setLoading(plan);
+    try {
+      const { url } = await stripeApi.createCheckoutSession(plan);
+      window.location.href = url;
+    } catch {
+      toast.error('Failed to start checkout');
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handlePortal() {
+    setLoading('portal');
+    try {
+      const { url } = await stripeApi.createPortalSession();
+      window.location.href = url;
+    } catch {
+      toast.error('Failed to open billing portal');
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  const currentPlan = status?.plan ?? 'free';
+
+  return (
+    <div className="space-y-6">
+      {/* Current plan banner */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">Current plan</p>
+            {isLoading ? (
+              <Skeleton className="mt-1 h-7 w-24" />
+            ) : (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xl font-bold text-foreground capitalize">{currentPlan}</span>
+                {currentPlan !== 'free' && status?.currentPeriodEnd && (
+                  <span className="text-xs text-muted-foreground">
+                    · renews {new Date(status.currentPeriodEnd).toLocaleDateString()}
+                  </span>
+                )}
+                {status?.cancelAtPeriodEnd && (
+                  <span className="text-xs text-warning font-medium">· cancels at period end</span>
+                )}
+              </div>
+            )}
+          </div>
+          {currentPlan !== 'free' && (
+            <Button variant="outline" size="sm" onClick={handlePortal} disabled={loading === 'portal'}>
+              {loading === 'portal' ? 'Opening…' : 'Manage subscription'}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Plan cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {PLANS.map((plan) => {
+          const isCurrent = currentPlan === plan.id;
+          const Icon = plan.icon;
+          return (
+            <div
+              key={plan.id}
+              className={[
+                'relative rounded-xl border p-5 transition-all',
+                isCurrent
+                  ? 'border-primary bg-primary/5 shadow-md'
+                  : 'border-border bg-card hover:border-accent/60',
+              ].join(' ')}
+            >
+              {isCurrent && (
+                <div className="absolute top-3 right-3">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                </div>
+              )}
+              <Icon className={`h-6 w-6 mb-3 ${plan.color}`} />
+              <p className="font-semibold text-foreground">{plan.name}</p>
+              <p className="text-2xl font-bold text-foreground mt-1">
+                {plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span>
+              </p>
+              <ul className="mt-4 space-y-2">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-3.5 w-3.5 text-success shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-5">
+                {isCurrent ? (
+                  <Button variant="outline" className="w-full" disabled>Current plan</Button>
+                ) : plan.id === 'free' ? (
+                  <Button variant="outline" className="w-full" onClick={handlePortal} disabled={loading === 'portal'}>
+                    Downgrade
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => handleUpgrade(plan.id)}
+                    disabled={loading === plan.id}
+                  >
+                    {loading === plan.id ? 'Redirecting…' : `Upgrade to ${plan.name}`}
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const [tab, setTab] = React.useState('company');
+
+  React.useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t) setTab(t);
+    if (searchParams.get('success') === '1') {
+      toast.success('Subscription updated successfully!');
+    }
+  }, [searchParams]);
 
   return (
     <div className="space-y-6">
@@ -886,6 +1051,12 @@ export default function SettingsPage() {
       {tab === 'team' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <TeamTab />
+        </motion.div>
+      )}
+
+      {tab === 'billing' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <BillingTab />
         </motion.div>
       )}
     </div>

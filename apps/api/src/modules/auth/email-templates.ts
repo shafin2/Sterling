@@ -252,3 +252,77 @@ export function inviteEmailText(
 ): string {
   return `${inviterName} has invited you to join ${tenantName} on Sterling as a ${role}.\n\nAccept your invitation (valid for 7 days):\n${inviteUrl}\n\nIf you weren't expecting this invitation, you can safely ignore this email.`;
 }
+
+// ─── Invoice Payment Reminders ────────────────────────────────────────────────
+
+export type ReminderType = 'pre-due' | 'due-today' | 'overdue-notice';
+
+const REMINDER_CONFIG: Record<ReminderType, { subject: string; heading: string; body: string; color: string }> = {
+  'pre-due': {
+    subject: 'Payment reminder: Invoice due in 3 days',
+    heading: 'Payment due in 3 days',
+    body: 'Just a friendly reminder that the following invoice is due in 3 days. Please arrange payment at your earliest convenience.',
+    color: '#7091E6',
+  },
+  'due-today': {
+    subject: 'Invoice payment due today',
+    heading: 'Invoice due today',
+    body: 'This is a reminder that the following invoice is due today. Please process payment to avoid any late fees.',
+    color: '#D99A4E',
+  },
+  'overdue-notice': {
+    subject: 'Invoice overdue — action required',
+    heading: 'Invoice is overdue',
+    body: 'Your invoice is now past its due date. Please arrange payment immediately to avoid further delays.',
+    color: '#C9485B',
+  },
+};
+
+export function invoiceReminderHtml(
+  type: ReminderType,
+  clientName: string,
+  invoiceNumber: string,
+  amount: string,
+  dueDate: string,
+  invoiceUrl: string,
+  _tenantName?: string,
+): string {
+  const cfg = REMINDER_CONFIG[type];
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<div style="max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+  <div style="background:${cfg.color};padding:32px;text-align:center">
+    <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700">${cfg.heading}</h1>
+  </div>
+  <div style="padding:32px">
+    <p style="margin:0 0 16px;color:#374151">Hi ${clientName},</p>
+    <p style="margin:0 0 24px;color:#374151">${cfg.body}</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+      <tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb;color:#6B7280;font-size:14px">Invoice</td><td style="padding:8px 0;border-bottom:1px solid #e5e7eb;font-weight:600;text-align:right">${invoiceNumber}</td></tr>
+      <tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb;color:#6B7280;font-size:14px">Amount Due</td><td style="padding:8px 0;border-bottom:1px solid #e5e7eb;font-weight:700;text-align:right;color:${cfg.color}">${amount}</td></tr>
+      <tr><td style="padding:8px 0;color:#6B7280;font-size:14px">Due Date</td><td style="padding:8px 0;font-weight:600;text-align:right">${dueDate}</td></tr>
+    </table>
+    <div style="text-align:center">
+      <a href="${invoiceUrl}" style="display:inline-block;padding:12px 32px;background:${cfg.color};color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px">View Invoice</a>
+    </div>
+  </div>
+  <div style="padding:16px 32px;background:#f9fafb;text-align:center">
+    <p style="margin:0;font-size:12px;color:#9CA3AF">Sent by Sterling · Invoice & Payroll Platform</p>
+  </div>
+</div>
+</body></html>`;
+}
+
+export function invoiceReminderText(
+  type: ReminderType,
+  clientName: string,
+  invoiceNumber: string,
+  amount: string,
+  dueDate: string,
+  invoiceUrl: string,
+  _tenantName?: string,
+): string {
+  const cfg = REMINDER_CONFIG[type];
+  return `${cfg.heading}\n\nHi ${clientName},\n\n${cfg.body}\n\nInvoice: ${invoiceNumber}\nAmount Due: ${amount}\nDue Date: ${dueDate}\n\nView Invoice: ${invoiceUrl}\n\n— Sterling`;
+}

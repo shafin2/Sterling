@@ -41,7 +41,7 @@ export function SupportChat() {
       const ch = client.channel('messaging', channelId);
       await ch.watch();
 
-      const existing = (ch.state.messages as MessageResponse[]).map((m) => ({
+      const existing = (ch.state.messages as unknown as MessageResponse[]).map((m) => ({
         id: m.id,
         text: m.text ?? '',
         userId: m.user?.id ?? '',

@@ -23,6 +23,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AiModule } from './modules/ai/ai.module';
 import { StreamModule } from './modules/stream/stream.module';
 import { InvitesModule } from './modules/invites/invites.module';
+import { StripeModule } from './modules/stripe/stripe.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './modules/auth/guards/permissions.guard';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
@@ -74,6 +75,7 @@ import envConfig from './config/env.config';
     AiModule,
     StreamModule,
     InvitesModule,
+    StripeModule,
   ],
   providers: [
     // Global auth guard — every route requires a valid JWT unless decorated @Public()
