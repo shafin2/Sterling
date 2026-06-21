@@ -1051,7 +1051,7 @@ function BillingTab() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function SettingsPage() {
+function SettingsContent() {
   const searchParams = useSearchParams();
   const [tab, setTab] = React.useState('company');
 
@@ -1146,5 +1146,13 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <React.Suspense>
+      <SettingsContent />
+    </React.Suspense>
   );
 }
